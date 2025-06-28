@@ -9,10 +9,12 @@
         th { background: #e0f7fa; }
         a { text-decoration: none; color: #005; }
         a:hover { text-decoration: underline; color: #1976d2; }
+        .summary-info { font-size: 0.8em; color: #555; }
     </style>
 </head>
 <body>
     <h1>{{ year }}年{{ month }}月のカレンダー</h1>
+    <p><a href="{{ url_for('logout') }}">ログアウト</a></p>
     <table>
         <tr>
             <th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th>
@@ -22,7 +24,15 @@
             {% for day in week %}
                 <td>
                     {% if day != 0 %}
-                        <a href="{{ url_for('daily_report', year=year, month=month, day=day) }}">{{ day }}</a>
+                        <a href="{{ url_for('daily_report', year=year, month=month, day=day) }}">
+                            {{ day }}
+                            {% if daily_summaries[day] %}
+                                <div class="summary-info">
+                                    患者数: {{ daily_summaries[day].total_patients }}<br>
+                                    売上: {{ daily_summaries[day].total_sales }}
+                                </div>
+                            {% endif %}
+                        </a>
                     {% endif %}
                 </td>
             {% endfor %}

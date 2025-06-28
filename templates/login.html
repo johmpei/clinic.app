@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>ログイン</title>
+</head>
+<body>
+    <h1>ログイン</h1>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class=flashes>
+        {% for category, message in messages %}
+          <li class="{{ category }}">{{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+    <form method="post">
+        <label>ユーザー名: <input type="text" name="username" required></label><br>
+        <label>パスワード: <input type="password" name="password" required></label><br>
+        <button type="submit">ログイン</button>
+    </form>
+    <p>テスト用: <a href="{{ url_for('register') }}">新規登録</a></p>
+</body>
+</html>

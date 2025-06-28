@@ -20,6 +20,7 @@
     <tr>
         <td>{{ period }}</td>
         <td>
+            {# TODO: ドクターの選択状態をデータベースから読み込む処理を追加 #}
             {% for doctor in doctors %}
                 <label>
                     <input type="checkbox" name="doctors_{{ period }}" value="{{ doctor[0] }}">
@@ -41,9 +42,9 @@
     {% for period in ['AM', 'PM'] %}
     <tr>
         <td>{{ period }}</td>
-        <td><input type="number" name="new_{{ period }}" min="0" value="0"></td>
-        <td><input type="number" name="return_{{ period }}" min="0" value="0"></td>
-        <td><input type="number" name="total_{{ period }}" min="0" value="0"></td>
+        <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}"></td>
+        <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}"></td>
+        <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}"></td>
     </tr>
     {% endfor %}
 </table>
@@ -64,9 +65,12 @@
             <input type="number"
                    name="procedure_{{ procedure[0] }}_{{ period }}"
                    min="0"
-                   value="0">
+                   value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and procedures_records[procedure[0]][period] is defined else 0 }}">
         </td>
         {% endfor %}
+        <td>
+            {# TODO: 夜間の入力フィールドを追加する場合、app.pyと合わせて実装 #}
+        </td>
     </tr>
     {% endfor %}
 </table>
