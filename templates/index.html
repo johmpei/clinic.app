@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ year }}年{{ month }}月のカレンダー</title>
+    <style>
+        table { border-collapse: collapse; }
+        th, td { border: 1px solid #aaa; padding: 12px; text-align: center; width: 60px; height: 60px; }
+        th { background: #e0f7fa; }
+        a { text-decoration: none; color: #005; }
+        a:hover { text-decoration: underline; color: #1976d2; }
+    </style>
+</head>
+<body>
+    <h1>{{ year }}年{{ month }}月のカレンダー</h1>
+    <table>
+        <tr>
+            <th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th>
+        </tr>
+        {% for week in month_days %}
+        <tr>
+            {% for day in week %}
+                <td>
+                    {% if day != 0 %}
+                        <a href="{{ url_for('daily_report', year=year, month=month, day=day) }}">{{ day }}</a>
+                    {% endif %}
+                </td>
+            {% endfor %}
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
