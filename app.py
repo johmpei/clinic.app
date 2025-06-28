@@ -353,8 +353,59 @@ def delete_report(year, month, day):
     
     return redirect(url_for('index'))
 
-#追加のページ
+#医者とかの登録
+@app.route('/manage_masters', methods=['GET', 'POST'])
+@login_required
+def manage_masters():
+    clinic_id = session.get('clinic_id')
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    message = None
 
+    if request.method == 'POST':
+        # ドクターの追加/削除
+        if 'add_doctor_name' in request.form:
+            doctor_name = request.form['add_doctor_name']
+            try:
+                cursor.execute("INSERT INTO doctors (clinic_id, name) VALUES (?, ?)", (clinic_id, doctor_name))
+                conn.commit()
+                message = f"ドクター「{doctor_name}」を追加しました！"
+            except sqlite3.IntegrityError:
+                message = f"ドクター「{doctor_name}」は既に存在します。"
+        elif 'delete_doctor_id' in request.form:
+            doctor_id = request.form['delete_doctor_id']
+            cursor.execute("DELETE FROM doctors WHERE id=? AND clinic_id=?", (doctor_id, clinic_id))
+            conn.commit()
+            message = "ドクターを削除しました。"
+        
+        # 処置の追加/削除（同様に実装）
+        elif 'add_procedure_name' in request.form:
+            procedure_name = request.form['add_procedure_name']
+            try:
+                cursor.execute("INSERT INTO procedures (clinic_id, name) VALUES (?, ?)", (clinic_id, procedure_name))
+                conn.commit()
+                message = f"処置「{procedure_name}」を追加しました！"
+            except sqlite3.IntegrityError:
+                message = f"処置「{procedure_name}」は既に存在します。"
+        elif 'delete_procedure_id' in request.form:
+            procedure_id = request.form['delete_procedure_id']
+            cursor.execute("DELETE FROM procedures WHERE id=? AND clinic_id=?", (procedure_id, clinic_id))
+            conn.commit()
+            message = "処置を削除しました。"
+        
+        # TODO: 編集機能も追加する
+            
+    # 現在のドクターと処置マスタを取得
+    cursor.execute("SELECT id, name FROM doctors WHERE clinic_id=?", (clinic_id,))
+    doctors = cursor.fetchall()
+    cursor.execute("SELECT id, name FROM procedures WHERE clinic_id=?", (clinic_id,))
+    procedures = cursor.fetchall()
+
+    conn.close()
+    return render_template('manage_masters.html', doctors=doctors, procedures=procedures, message=message)
+
+# index.html などに管理画面へのリンクを追加:
+# <p><a href="{{ url_for('manage_masters') }}">マスタ管理</a></p>
 
 
 

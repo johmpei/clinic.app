@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>マスタ管理</title>
+</head>
+<body>
+    <h1>マスタ管理</h1>
+    {% if message %}
+        <p style="color:green">{{ message }}</p>
+    {% endif %}
+
+    <h2>ドクター管理</h2>
+    <form method="post">
+        <label>新規ドクター名: <input type="text" name="add_doctor_name" required></label>
+        <button type="submit">追加</button>
+    </form>
+    <ul>
+        {% for doctor in doctors %}
+            <li>
+                {{ doctor[1] }} 
+                <form method="post" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
+                    <input type="hidden" name="delete_doctor_id" value="{{ doctor[0] }}">
+                    <button type="submit">削除</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <h2>処置内容管理</h2>
+    <form method="post">
+        <label>新規処置名: <input type="text" name="add_procedure_name" required></label>
+        <button type="submit">追加</button>
+    </form>
+    <ul>
+        {% for procedure in procedures %}
+            <li>
+                {{ procedure[1] }}
+                <form method="post" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
+                    <input type="hidden" name="delete_procedure_id" value="{{ procedure[0] }}">
+                    <button type="submit">削除</button>
+                </form>
+            </li>
+        {% endfor %}
+    </ul>
+
+    <p><a href="{{ url_for('index') }}">カレンダーに戻る</a></p>
+</body>
+</html>
