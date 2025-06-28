@@ -100,18 +100,17 @@ def index():
     conn = sqlite3.connect('daily_report.db')
     cursor = conn.cursor()
     # 月全体のサマリーデータを効率的に取得
-    # LEFT JOIN を使うことで、日報がない日も結果に含まれるようにする
     cursor.execute("""
-        SELECT 
-            strftime('%d', DR.date) as day, 
-            SUM(S.total_patients) as total_patients, 
-            DR.total_sales 
+        SELECT
+            strftime('%d', DR.date) as day,
+            SUM(S.total_patients) as total_patients,
+            DR.total_sales
         FROM daily_reports DR
         LEFT JOIN shifts S ON DR.id = S.daily_report_id
         WHERE DR.clinic_id = ? AND strftime('%Y', DR.date) = ? AND strftime('%m', DR.date) = ?
         GROUP BY DR.date
     """, (clinic_id, str(year), f"{month:02d}"))
-    
+
     for row in cursor.fetchall():
         day_str, total_patients, total_sales = row
         daily_summaries[int(day_str)] = {
@@ -121,18 +120,23 @@ def index():
     conn.close()
 
     return render_template(
-        'index.html', 
-        year=year, 
-        month=month, 
-        month_days=month_days, 
+        'index.html',
+        year=year,
+        month=month,
+        month_days=month_days,
         daily_summaries=daily_summaries
     )
 
 
 @app.route('/report/<int:year>/<int:month>/<int:day>', methods=['GET', 'POST'])
+@login_required # ログイン必須にする
 def daily_report(year, month, day):
     report_date = f"{year:04d}-{month:02d}-{day:02d}"
-    clinic_id = 1  # MVPなので仮で1固定
+    clinic_id = session.get('clinic_id') # ここをセッションから取得するように変更！
+    if not clinic_id: # クリニックIDがない場合はエラーまたはログインページへリダイレクト
+        flash('クリニック情報が見つかりません。再ログインしてください。', 'danger')
+        return redirect(url_for('login'))
+
     message = None
 
     conn = sqlite3.connect('daily_report.db')
@@ -140,7 +144,11 @@ def daily_report(year, month, day):
 
     # 必要なマスタを都度取得
     cursor.execute("SELECT id, name FROM procedures WHERE clinic_id=?", (clinic_id,))
-    procedures_master = cursor.fetchall() # 'procedures'と名前が重複しないように変更
+    procedures_master = cursor.fetchall()
+
+    # doctorsマスタの取得 (ここを追加/確認)
+    cursor.execute("SELECT id, name FROM doctors WHERE clinic_id=?", (clinic_id,))
+    doctors_master = cursor.fetchall()
 
     # まず既存の日報データを取得
     cursor.execute(
@@ -149,8 +157,8 @@ def daily_report(year, month, day):
     )
     result = cursor.fetchone()
     daily_report_id = result[0] if result else None
-    total_points = result[1] if result else 0 # Noneの場合に備えて初期値を0に
-    total_sales = result[2] if result else 0   # Noneの場合に備えて初期値を0に
+    total_points = result[1] if result else 0
+    total_sales = result[2] if result else 0
 
     # shiftsデータも取得
     shifts = {}
@@ -185,7 +193,7 @@ def daily_report(year, month, day):
             if procedure_id not in procedures_records:
                 procedures_records[procedure_id] = {}
             procedures_records[procedure_id][time_period] = count
-    
+
     # なければ0を入れておく
     for proc_id, _ in procedures_master:
         if proc_id not in procedures_records:
@@ -194,24 +202,41 @@ def daily_report(year, month, day):
             if period not in procedures_records[proc_id]:
                 procedures_records[proc_id][period] = 0
 
+    # daily_doctor_shiftsデータを取得 (ここを追加/確認)
+    daily_doctors = {} # 例: {'AM': [1, 3], 'PM': [1, 2]} のような形式
+    if daily_report_id:
+        cursor.execute(
+            "SELECT doctor_id, time_period FROM daily_doctor_shifts WHERE daily_report_id=?",
+            (daily_report_id,)
+        )
+        doctor_shifts_data = cursor.fetchall()
+        for doctor_id, time_period in doctor_shifts_data:
+            if time_period not in daily_doctors:
+                daily_doctors[time_period] = []
+            daily_doctors[time_period].append(doctor_id)
+    # なければ空リストを入れておく (テンプレートでエラーにならないように)
+    for period in ['AM', 'PM', '夜間']:
+        if period not in daily_doctors:
+            daily_doctors[period] = []
+
     # POSTなら保存処理
     if request.method == 'POST':
         total_points = request.form.get('total_points', 0)
         total_sales = request.form.get('total_sales', 0)
 
         # daily_reportsを保存・取得
-        if result:
+        if result: # 既に日報データがある場合
             cursor.execute(
                 "UPDATE daily_reports SET total_points=?, total_sales=? WHERE clinic_id=? AND date=?",
                 (total_points, total_sales, clinic_id, report_date)
             )
             daily_report_id = result[0]
-        else:
+        else: # 新規作成の場合
             cursor.execute(
                 "INSERT INTO daily_reports (clinic_id, date, total_points, total_sales) VALUES (?, ?, ?, ?)",
                 (clinic_id, report_date, total_points, total_sales)
             )
-            daily_report_id = cursor.lastrowid
+            daily_report_id = cursor.lastrowid # 新しく挿入されたIDを取得
 
         # shiftsテーブルの保存
         for period in ['AM', 'PM']: # '夜間'はdaily_report.htmlのフォームにないので外す
@@ -239,7 +264,7 @@ def daily_report(year, month, day):
         for procedure_id, _ in procedures_master:
             for period in ['AM', 'PM']: # '夜間'はdaily_report.htmlのフォームにないので外す
                 count = request.form.get(f'procedure_{procedure_id}_{period}', 0)
-                
+
                 cursor.execute(
                     "SELECT id FROM procedure_records WHERE daily_report_id=? AND procedure_id=? AND time_period=?",
                     (daily_report_id, procedure_id, period)
@@ -255,6 +280,18 @@ def daily_report(year, month, day):
                         "INSERT INTO procedure_records (daily_report_id, procedure_id, time_period, count) VALUES (?, ?, ?, ?)",
                         (daily_report_id, procedure_id, period, count)
                     )
+
+        # daily_doctor_shiftsの保存 (ここを追加/確認)
+        # 一旦、その日のドクターシフトを全て削除
+        cursor.execute("DELETE FROM daily_doctor_shifts WHERE daily_report_id=?", (daily_report_id,))
+        # フォームから送信された選択肢を再挿入
+        for period in ['AM', 'PM']: # '夜間'はdaily_report.htmlのフォームにないので外す
+            selected_doctors = request.form.getlist(f'doctors_{period}') # 複数選択なのでgetlist
+            for doctor_id in selected_doctors:
+                cursor.execute(
+                    "INSERT INTO daily_doctor_shifts (daily_report_id, doctor_id, time_period) VALUES (?, ?, ?)",
+                    (daily_report_id, int(doctor_id), period) # doctor_id は文字列で来るので int に変換
+                )
 
         conn.commit()
         message = "保存しました！"
@@ -286,7 +323,7 @@ def daily_report(year, month, day):
         for period in ['AM', 'PM', '夜間']:
             if period not in shifts:
                 shifts[period] = {'new_patients': 0, 'returning_patients': 0, 'total_patients': 0}
-        
+
         # procedures_recordsデータの再取得
         procedures_records = {}
         cursor.execute(
@@ -299,7 +336,7 @@ def daily_report(year, month, day):
             if procedure_id not in procedures_records:
                 procedures_records[procedure_id] = {}
             procedures_records[procedure_id][time_period] = count
-        
+
         # なければ0を入れておく
         for proc_id, _ in procedures_master:
             if proc_id not in procedures_records:
@@ -307,6 +344,22 @@ def daily_report(year, month, day):
             for period in ['AM', 'PM', '夜間']:
                 if period not in procedures_records[proc_id]:
                     procedures_records[proc_id][period] = 0
+
+        # daily_doctor_shiftsデータの再取得 (ここを追加/確認)
+        daily_doctors = {}
+        cursor.execute(
+            "SELECT doctor_id, time_period FROM daily_doctor_shifts WHERE daily_report_id=?",
+            (daily_report_id,)
+        )
+        doctor_shifts_data_after_save = cursor.fetchall()
+        for doctor_id, time_period in doctor_shifts_data_after_save:
+            if time_period not in daily_doctors:
+                daily_doctors[time_period] = []
+            daily_doctors[time_period].append(doctor_id)
+        for period in ['AM', 'PM', '夜間']:
+            if period not in daily_doctors:
+                daily_doctors[period] = []
+
 
     conn.close() # POST/GETに関わらず最後に閉じる
 
@@ -318,8 +371,12 @@ def daily_report(year, month, day):
         shifts=shifts,
         procedures=procedures_master, # procedures_masterを渡す
         procedures_records=procedures_records, # 新しく追加
+        doctors=doctors_master,        # ドクターマスタ (ここを追加)
+        daily_doctors=daily_doctors,  # 選択されたドクター (ここを追加)
         message=message
     )
+
+
 #日報データ削除
 @app.route('/delete_report/<int:year>/<int:month>/<int:day>', methods=['POST'])
 @login_required
