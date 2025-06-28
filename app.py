@@ -320,6 +320,40 @@ def daily_report(year, month, day):
         procedures_records=procedures_records, # 新しく追加
         message=message
     )
+#日報データ削除
+@app.route('/delete_report/<int:year>/<int:month>/<int:day>', methods=['POST'])
+@login_required
+def delete_report(year, month, day):
+    report_date = f"{year:04d}-{month:02d}-{day:02d}"
+    clinic_id = session.get('clinic_id')
+
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT id FROM daily_reports WHERE clinic_id=? AND date=?", (clinic_id, report_date))
+        daily_report_id = cursor.fetchone()
+        
+        if daily_report_id:
+            daily_report_id = daily_report_id[0]
+            # 関連するデータを削除
+            cursor.execute("DELETE FROM shifts WHERE daily_report_id=?", (daily_report_id,))
+            cursor.execute("DELETE FROM procedure_records WHERE daily_report_id=?", (daily_report_id,))
+            cursor.execute("DELETE FROM daily_doctor_shifts WHERE daily_report_id=?", (daily_report_id,))
+            cursor.execute("DELETE FROM daily_reports WHERE id=?", (daily_report_id,))
+            conn.commit()
+            flash('日報を削除しました。', 'success')
+        else:
+            flash('削除対象の日報が見つかりませんでした。', 'warning')
+    except Exception as e:
+        conn.rollback()
+        flash(f'日報の削除中にエラーが発生しました: {e}', 'danger')
+    finally:
+        conn.close()
+    
+    return redirect(url_for('index'))
+
+#追加のページ
 
 
 

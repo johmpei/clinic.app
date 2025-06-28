@@ -82,6 +82,10 @@
   <button type="submit">保存</button>
 </form>
 
+<form method="post" action="{{ url_for('delete_report', year=year, month=month, day=day) }}" onsubmit="return confirm('この日の日報を本当に削除しますか？');">
+    <button type="submit" style="background-color: red; color: white;">この日の日報を削除</button>
+</form>
+
 
     <p><a href="{{ url_for('index') }}">カレンダーに戻る</a></p>
 </body>
