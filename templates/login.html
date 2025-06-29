@@ -2,24 +2,143 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログイン</title>
+    <style>
+        /* ここにCSSを記述します */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* モダンなフォント */
+            background-color: #f0f2f5; /* 背景色 */
+            display: flex;
+            justify-content: center; /* 水平中央寄せ */
+            align-items: center;     /* 垂直中央寄せ */
+            min-height: 100vh;       /* 画面全体に広げる */
+            margin: 0;
+            padding: 20px; /* 小さな画面での余白 */
+            box-sizing: border-box; /* パディングを幅に含める */
+        }
+
+        .login-container {
+            background-color: #ffffff;
+            padding: 40px;
+            border-radius: 10px; /* 角を丸くする */
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* 立体的な影 */
+            width: 100%;
+            max-width: 400px; /* 最大幅を制限 */
+            text-align: center;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.2em; /* タイトルを大きく */
+            font-weight: 600; /* 少し太字に */
+        }
+
+        /* Flashメッセージを非表示にする (既存の ul.flashes がある場合) */
+        {# もし今後、他のメッセージ（エラーなど）も表示したくない場合は、
+           HTMLの {% with messages ... %} ブロックごと削除してください。
+           今回は履歴だけ非表示にするために、CSSで対応します。 #}
+        ul.flashes {
+            display: none; /* Flashメッセージリスト全体を非表示 */
+        }
+
+        form {
+            display: flex;
+            flex-direction: column; /* 要素を縦に並べる */
+            gap: 15px; /* 要素間のスペース */
+        }
+
+        label {
+            text-align: left; /* ラベルを左寄せに */
+            color: #555;
+            font-size: 1.05em;
+            font-weight: 500;
+        }
+
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1em;
+            box-sizing: border-box; /* パディングを幅に含める */
+            margin-top: 5px; /* ラベルとの間に少しスペース */
+        }
+
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #007bff; /* フォーカス時のボーダー色 */
+            outline: none; /* デフォルトのアウトラインを消す */
+            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2); /* フォーカス時の影 */
+        }
+
+        button[type="submit"] {
+            background-color: #007bff; /* 青色のボタン */
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1em;
+            font-weight: 600;
+            width: 100%;
+            margin-top: 20px;
+            transition: background-color 0.3s ease; /* ホバー時のアニメーション */
+        }
+
+        button[type="submit"]:hover {
+            background-color: #0056b3;
+        }
+
+        p.register-link {
+            margin-top: 30px;
+            font-size: 0.95em;
+            color: #777;
+        }
+
+        p.register-link a {
+            color: #007bff;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        p.register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
 </head>
 <body>
-    <h1>ログイン</h1>
-    {% with messages = get_flashed_messages(with_categories=true) %}
-      {% if messages %}
-        <ul class=flashes>
-        {% for category, message in messages %}
-          <li class="{{ category }}">{{ message }}</li>
-        {% endfor %}
-        </ul>
-      {% endif %}
-    {% endwith %}
-    <form method="post">
-        <label>ユーザー名: <input type="text" name="username" required></label><br>
-        <label>パスワード: <input type="password" name="password" required></label><br>
-        <button type="submit">ログイン</button>
-    </form>
-    <p>テスト用: <a href="{{ url_for('register') }}">新規登録</a></p>
+    <div class="login-container">
+        <h1>ログイン</h1>
+
+        {# FlaskのFlashメッセージ表示ブロックは残しますが、CSSで非表示にします。
+           もし「ログインしました！」以外のエラーメッセージなども一切表示したくない場合は、
+           以下の {% with ... %} から {% endwith %} までを完全に削除しても構いません。 #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes"> {# CSSで display: none; にしています #}
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form method="post">
+            <label>
+                ユーザー名:
+                <input type="text" name="username" required placeholder="ユーザー名を入力してください">
+            </label>
+            <label>
+                パスワード:
+                <input type="password" name="password" required placeholder="パスワードを入力してください">
+            </label>
+            <button type="submit">ログイン</button>
+        </form>
+        <p class="register-link">テスト用: <a href="{{ url_for('register') }}">新規登録</a></p>
+    </div>
 </body>
 </html>
