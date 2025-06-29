@@ -3,6 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <title>{{ year }}年{{ month }}月{{ day }}日の日報</title>
+    <style>
+        /* オプション: 表示を改善するための基本的なスタイル */
+        body { font-family: sans-serif; margin: 20px; }
+        table { border-collapse: collapse; margin-bottom: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        input[type="number"] { width: 60px; }
+        select { width: 150px; } /* ドロップダウンの幅を調整 */
+    </style>
 </head>
 <body>
     <h1>{{ year }}年{{ month }}月{{ day }}日の日報ページ</h1>
@@ -19,18 +27,32 @@
     {% for period in ['AM', 'PM',] %}
     <tr>
         <td>{{ period }}</td>
-        <td>
-            {# TODO: ドクターの選択状態をデータベースから読み込む処理を追加 #}
-            {% for doctor in doctors %}
-                <label>
-                    <input type="checkbox" name="doctors_{{ period }}" value="{{ doctor[0] }}">
-                    {{ doctor[1] }}
-                </label>
-            {% endfor %}
+        <td id="doctors_container_{{ period }}">
+            {# 既存の選択ドクターを初期表示 #}
+            {% if daily_doctors[period] %}
+                {% for doctor_id in daily_doctors[period] %}
+                    <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
+                        <option value="">-- 選択してください --</option>
+                        {% for doctor in doctors %}
+                            <option value="{{ doctor[0] }}" {% if doctor[0] == doctor_id %}selected{% endif %}>
+                                {{ doctor[1] }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                {% endfor %}
+            {% endif %}
+            {# 最後に空のドロップダウンを一つ追加 #}
+            <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
+                <option value="">-- 選択してください --</option>
+                {% for doctor in doctors %}
+                    <option value="{{ doctor[0] }}">{{ doctor[1] }}</option>
+                {% endfor %}
+            </select>
         </td>
     </tr>
     {% endfor %}
 </table>
+
 <h3>患者数</h3>
 <table border="1">
     <tr>
@@ -42,9 +64,11 @@
     {% for period in ['AM', 'PM'] %}
     <tr>
         <td>{{ period }}</td>
-        <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}"></td>
-        <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}"></td>
-        <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}"></td>
+        {# 新患と再診の入力時に合計を計算するようoninputイベントを追加 #}
+        <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
+        <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
+        {# 合計はJavaScriptで計算するためreadonly属性を追加し、idを設定 #}
+        <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}" id="total_{{ period }}" readonly></td>
     </tr>
     {% endfor %}
 </table>
@@ -56,6 +80,7 @@
         <th>AM</th>
         <th>PM</th>
         <th>夜間</th>
+        <th>合計</th> {# ここを追加 #}
     </tr>
     {% for procedure in procedures %}
     <tr>
@@ -65,16 +90,24 @@
             <input type="number"
                    name="procedure_{{ procedure[0] }}_{{ period }}"
                    min="0"
-                   value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and procedures_records[procedure[0]][period] is defined else 0 }}">
+                   value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and procedures_records[procedure[0]][period] is defined else 0 }}"
+                   oninput="calculateProcedureTotal('{{ procedure[0] }}')"> {# ここにoninputイベントを追加 #}
         </td>
         {% endfor %}
         <td>
             {# TODO: 夜間の入力フィールドを追加する場合、app.pyと合わせて実装 #}
         </td>
+        <td>
+            <input type="number"
+                   name="procedure_total_{{ procedure[0] }}"
+                   min="0"
+                   value="0" {# 初期値は0。JavaScriptで計算される #}
+                   id="procedure_total_{{ procedure[0] }}"
+                   readonly> {# 合計は自動計算されるためreadonly #}
+        </td> {# ここを追加 #}
     </tr>
     {% endfor %}
 </table>
-
 
 　　　<br><br>
   <label>保険点数: <input type="number" name="total_points" min="0" value="{{ total_points }}"></label><br><br>
@@ -86,7 +119,84 @@
     <button type="submit" style="background-color: red; color: white;">この日の日報を削除</button>
 </form>
 
+<p><a href="{{ url_for('index') }}">カレンダーに戻る</a></p>
 
-    <p><a href="{{ url_for('index') }}">カレンダーに戻る</a></p>
+<script>
+    // 患者数の合計を計算する関数
+    function calculateTotalPatients(period) {
+        const newPatients = parseInt(document.querySelector(`input[name="new_${period}"]`).value) || 0;
+        const returningPatients = parseInt(document.querySelector(`input[name="return_${period}"]`).value) || 0;
+        const totalPatientsField = document.getElementById(`total_${period}`);
+        totalPatientsField.value = newPatients + returningPatients;
+    }
+
+    // 処置の合計を計算する関数
+    function calculateProcedureTotal(procedureId) {
+        const amCount = parseInt(document.querySelector(`input[name="procedure_${procedureId}_AM"]`).value) || 0;
+        const pmCount = parseInt(document.querySelector(`input[name="procedure_${procedureId}_PM"]`).value) || 0;
+        // 夜間がある場合はここに追加
+        // const nightCount = parseInt(document.querySelector(`input[name="procedure_${procedureId}_夜間"]`).value) || 0;
+
+        const totalField = document.getElementById(`procedure_total_${procedureId}`);
+        totalField.value = amCount + pmCount; // + nightCount (夜間がある場合)
+    }
+
+    // ページロード時に既存の値で計算を実行
+    document.addEventListener('DOMContentLoaded', () => {
+        calculateTotalPatients('AM');
+        calculateTotalPatients('PM');
+
+        // 各処置の合計もページロード時に計算
+        const procedures = {{ procedures | tojson | safe }}; // app.pyから渡されるproceduresマスタ
+        procedures.forEach(procedure => {
+            calculateProcedureTotal(procedure[0]); // procedure[0] は処置のID
+        });
+    });
+
+    // ドクター選択ドロップダウンを動的に追加・削除する関数
+    function addDoctorSelectIfLast(changedSelect, period) {
+        const container = document.getElementById(`doctors_container_${period}`);
+        const selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`);
+        const lastSelect = selects[selects.length - 1];
+
+        // 変更されたドロップダウンが「最後」の空ドロップダウンだった場合
+        if (changedSelect === lastSelect && changedSelect.value !== "") {
+            // 新しい空のドロップダウンを作成
+            const newSelect = document.createElement('select');
+            newSelect.name = `doctors_${period}[]`;
+            newSelect.onchange = function() { addDoctorSelectIfLast(this, period); };
+
+            const defaultOption = document.createElement('option');
+            defaultOption.value = "";
+            defaultOption.textContent = "-- 選択してください --";
+            newSelect.appendChild(defaultOption);
+
+            const allDoctors = JSON.parse('{{ doctors | tojson | safe }}');
+            allDoctors.forEach(doctor => {
+                const option = document.createElement('option');
+                option.value = doctor[0];
+                option.textContent = doctor[1];
+                newSelect.appendChild(option);
+            });
+            container.appendChild(newSelect);
+        }
+
+        // 空になったドロップダウンを削除する（ただし、最後の1つは残す）
+        let filledSelectCount = 0;
+        selects.forEach(select => {
+            if (select.value !== "") {
+                filledSelectCount++;
+            }
+        });
+
+        for (let i = selects.length - 1; i >= 0; i--) {
+            const currentSelect = selects[i];
+            if (currentSelect.value === "" && currentSelect !== lastSelect && selects.length > (filledSelectCount + 1)) {
+                 container.removeChild(currentSelect);
+            }
+        }
+    }
+</script>
+
 </body>
 </html>
