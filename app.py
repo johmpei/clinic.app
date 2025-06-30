@@ -1,9 +1,9 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 import calendar, sqlite3
-from datetime import date, timedelta # ★ここを確認・追加★
+from datetime import date, timedelta
 from werkzeug.security import generate_password_hash, check_password_hash
 import functools
-import holidays # ★ここを追加★
+import holidays
 
 app = Flask(__name__)
 app.secret_key = 'your_secret_key_here'
@@ -125,7 +125,7 @@ def index(year=None, month=None): # URLからyearとmonthを受け取る（デ�
         SELECT
             strftime('%d', DR.date) as day,
             SUM(S.total_patients) as total_patients,
-            DR.total_sales
+            DR.total_points -- total_salesをtotal_pointsに変更
         FROM daily_reports DR
         LEFT JOIN shifts S ON DR.id = S.daily_report_id
         WHERE DR.clinic_id = ? AND strftime('%Y', DR.date) = ? AND strftime('%m', DR.date) = ?
@@ -133,10 +133,10 @@ def index(year=None, month=None): # URLからyearとmonthを受け取る（デ�
     """, (clinic_id, str(year), f"{month:02d}")) # 月を2桁のゼロ埋め文字列にフォーマット
 
     for row in cursor.fetchall():
-        day_str, total_patients, total_sales = row
+        day_str, total_patients, total_points = row # total_salesをtotal_pointsに変更
         daily_summaries[int(day_str)] = {
             'total_patients': total_patients if total_patients is not None else 0,
-            'total_sales': total_sales if total_sales is not None else 0
+            'total_points': total_points if total_points is not None else 0 # total_salesをtotal_pointsに変更
         }
     conn.close()
 

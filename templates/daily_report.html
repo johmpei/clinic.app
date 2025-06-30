@@ -4,135 +4,275 @@
     <meta charset="UTF-8">
     <title>{{ year }}年{{ month }}月{{ day }}日の日報</title>
     <style>
-        /* オプション: 表示を改善するための基本的なスタイル */
-        body { font-family: sans-serif; margin: 20px; }
-        table { border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        input[type="number"] { width: 60px; }
-        select { width: 150px; } /* ドロップダウンの幅を調整 */
+        body {
+            font-family: 'Yu Gothic', '游ゴシック', 'Hiragino Kaku Gothic ProN', 'ヒラギノ角ゴ ProN W3', sans-serif;
+            margin: 0;
+            background-color: #f9f9f9;
+            color: #333;
+            font-size: 18px;
+            padding-bottom: 48px;
+        }
+        .main-content {
+            max-width: 900px;
+            margin: 40px auto 0 auto;
+            background: #fff;
+            padding: 36px 40px 32px 40px;
+            border-radius: 14px;
+            box-shadow: 0 4px 24px 0 rgba(30,30,60,0.08);
+        }
+        h1 {
+            margin: 0 0 26px 0;
+            font-size: 2em;
+            font-weight: 400;
+            letter-spacing: 1px;
+            color: #333;
+        }
+        h3 {
+            margin-top: 36px;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            font-weight: 500;
+            color: #222;
+            border-left: 4px solid #007bff;
+            padding-left: 12px;
+            background: linear-gradient(90deg, #eaf3ff 0 80%, transparent 100%);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 24px;
+            background: #fcfcfc;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px 0 rgba(0,0,0,0.03);
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 10px 10px;
+            text-align: left;
+            font-size: 1.06em;
+        }
+        th {
+            background: #f5f5f5;
+            color: #444;
+            font-weight: normal;
+        }
+        input[type="number"], select {
+            font-size: 1em;
+            padding: 6px 10px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            background: #fff;
+            width: 90px;
+            box-sizing: border-box;
+            margin-right: 3px;
+        }
+        select { width: 160px; }
+        input[readonly] { background: #f3f3f3; color: #888; }
+        .message {
+            color: #26a641;
+            font-weight: bold;
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: inline-block;
+            margin: 10px 0 3px 0;
+            color: #444;
+            font-size: 1em;
+        }
+        .button-group {
+            margin-top: 30px;
+            display: flex;
+            gap: 18px;
+        }
+        button, .btn-link {
+            display: inline-block;
+            font-size: 1.05em;
+            padding: 10px 32px;
+            border-radius: 6px;
+            border: 1px solid #bbb;
+            background: #fff;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.25s;
+            font-family: inherit;
+            text-decoration: none;
+        }
+        button:hover, .btn-link:hover {
+            background: #333;
+            color: #fff;
+            border-color: #333;
+        }
+        .btn-primary {
+            background: #007bff;
+            border-color: #007bff;
+            color: #fff;
+        }
+        .btn-primary:hover {
+            background: #0056b3;
+            border-color: #0056b3;
+        }
+        .btn-danger {
+            background: #e03e2f;
+            color: #fff;
+            border-color: #d62610;
+        }
+        .btn-danger:hover {
+            background: #b91d06;
+            color: #fff;
+            border-color: #a31702;
+        }
+        .bottom-link {
+            margin-top: 32px;
+            display: block;
+            text-align: left;
+        }
+        .bottom-link a {
+            color: #007bff;
+            font-size: 1.1em;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+        .bottom-link a:hover {
+            text-decoration: underline;
+            color: #003a80;
+        }
+        /* スクロールバーもやや細く */
+        ::-webkit-scrollbar {
+            width: 10px;
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #e0e0e0;
+            border-radius: 6px;
+        }
     </style>
 </head>
 <body>
-    <h1>{{ year }}年{{ month }}月{{ day }}日の日報ページ</h1>
-    {% if message %}
-        <p style="color:green">{{ message }}</p>
-    {% endif %}
-<form method="post">
- <h3>出勤ドクター</h3>
-<table border="1">
-    <tr>
-        <th>時間帯</th>
-        <th>担当ドクター（複数選択OK）</th>
-    </tr>
-    {% for period in ['AM', 'PM',] %}
-    <tr>
-        <td>{{ period }}</td>
-        <td id="doctors_container_{{ period }}">
-            {# 既存の選択ドクターを初期表示 #}
-            {% if daily_doctors[period] %}
-                {% for doctor_id in daily_doctors[period] %}
-                    <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
-                        <option value="">-- 選択してください --</option>
-                        {% for doctor in doctors %}
-                            <option value="{{ doctor[0] }}" {% if doctor[0] == doctor_id %}selected{% endif %}>
-                                {{ doctor[1] }}
-                            </option>
-                        {% endfor %}
-                    </select>
+    <div class="main-content">
+        <h1>{{ year }}年{{ month }}月{{ day }}日の日報ページ</h1>
+        {% if message %}
+            <p class="message">{{ message }}</p>
+        {% endif %}
+        <form method="post">
+            <h3>出勤ドクター</h3>
+            <table>
+                <tr>
+                    <th>時間帯</th>
+                    <th>担当ドクター（複数選択OK）</th>
+                </tr>
+                {% for period in ['AM', 'PM',] %}
+                <tr>
+                    <td>{{ period }}</td>
+                    <td id="doctors_container_{{ period }}">
+                        {% if daily_doctors[period] %}
+                            {% for doctor_id in daily_doctors[period] %}
+                                <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
+                                    <option value="">-- 選択してください --</option>
+                                    {% for doctor in doctors %}
+                                        <option value="{{ doctor[0] }}" {% if doctor[0] == doctor_id %}selected{% endif %}>
+                                            {{ doctor[1] }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            {% endfor %}
+                        {% endif %}
+                        <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
+                            <option value="">-- 選択してください --</option>
+                            {% for doctor in doctors %}
+                                <option value="{{ doctor[0] }}">{{ doctor[1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                </tr>
                 {% endfor %}
-            {% endif %}
-            {# 最後に空のドロップダウンを一つ追加 #}
-            <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
-                <option value="">-- 選択してください --</option>
-                {% for doctor in doctors %}
-                    <option value="{{ doctor[0] }}">{{ doctor[1] }}</option>
+            </table>
+
+            <h3>患者数</h3>
+            <table>
+                <tr>
+                    <th>時間帯</th>
+                    <th>新患</th>
+                    <th>再診</th>
+                    <th>合計</th>
+                    <th>再診率</th>
+                </tr>
+                {% for period in ['AM', 'PM'] %}
+                <tr>
+                    <td>{{ period }}</td>
+                    <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
+                    <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
+                    <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}" id="total_{{ period }}" readonly></td>
+                    <td><span id="revisit_rate_{{ period }}">0.00%</span></td>
+                </tr>
                 {% endfor %}
-            </select>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+            </table>
 
-<h3>患者数</h3>
-<table border="1">
-    <tr>
-        <th>時間帯</th>
-        <th>新患</th>
-        <th>再診</th>
-        <th>合計</th>
-        <th>再診率</th> {# ここを追加 #}
-    </tr>
-    {% for period in ['AM', 'PM'] %}
-    <tr>
-        <td>{{ period }}</td>
-        <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
-        <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
-        <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}" id="total_{{ period }}" readonly></td>
-        <td><span id="revisit_rate_{{ period }}">0.00%</span></td> {# ここを追加 #}
-    </tr>
-    {% endfor %}
-</table>
+            <h3>処置・検査記録</h3>
+            <table>
+                <tr>
+                    <th>処置名</th>
+                    <th>AM</th>
+                    <th>PM</th>
+                    <th>夜間</th>
+                    <th>合計</th>
+                </tr>
+                {% for procedure in procedures %}
+                <tr>
+                    <td>{{ procedure[1] }}</td>
+                    {% for period in ['AM', 'PM'] %}
+                    <td>
+                        <input type="number"
+                            name="procedure_{{ procedure[0] }}_{{ period }}"
+                            min="0"
+                            value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and procedures_records[procedure[0]][period] is defined else 0 }}"
+                            oninput="calculateProcedureTotal('{{ procedure[0] }}')">
+                    </td>
+                    {% endfor %}
+                    <td>
+                        <!-- 夜間入力用：app.py側と連動時に実装 -->
+                    </td>
+                    <td>
+                        <input type="number"
+                            name="procedure_total_{{ procedure[0] }}"
+                            min="0"
+                            value="0"
+                            id="procedure_total_{{ procedure[0] }}"
+                            readonly>
+                    </td>
+                </tr>
+                {% endfor %}
+            </table>
 
-<h3>処置・検査記録</h3>
-<table border="1">
-    <tr>
-        <th>処置名</th>
-        <th>AM</th>
-        <th>PM</th>
-        <th>夜間</th>
-        <th>合計</th>
-    </tr>
-    {% for procedure in procedures %}
-    <tr>
-        <td>{{ procedure[1] }}</td>
-        {% for period in ['AM', 'PM'] %}
-        <td>
-            <input type="number"
-                   name="procedure_{{ procedure[0] }}_{{ period }}"
-                   min="0"
-                   value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and procedures_records[procedure[0]][period] is defined else 0 }}"
-                   oninput="calculateProcedureTotal('{{ procedure[0] }}')">
-        </td>
-        {% endfor %}
-        <td>
-            {# TODO: 夜間の入力フィールドを追加する場合、app.pyと合わせて実装 #}
-        </td>
-        <td>
-            <input type="number"
-                   name="procedure_total_{{ procedure[0] }}"
-                   min="0"
-                   value="0"
-                   id="procedure_total_{{ procedure[0] }}"
-                   readonly>
-        </td>
-    </tr>
-    {% endfor %}
-</table>
+            <div class="button-group">
+                <label class="form-label">保険点数: <input type="number" name="total_points" min="0" value="{{ total_points }}"></label>
+                <label class="form-label">売上金額: <input type="number" name="total_sales" min="0" value="{{ total_sales }}"></label>
+            </div>
 
-　　　<br><br>
-  <label>保険点数: <input type="number" name="total_points" min="0" value="{{ total_points }}"></label><br><br>
-    <label>売上金額: <input type="number" name="total_sales" min="0" value="{{ total_sales }}"></label><br><br>
-  <button type="submit">保存</button>
-</form>
+            <div class="button-group">
+                <button type="submit" class="btn-primary">保存</button>
+            </div>
+        </form>
 
-<form method="post" action="{{ url_for('delete_report', year=year, month=month, day=day) }}" onsubmit="return confirm('この日の日報を本当に削除しますか？');">
-    <button type="submit" style="background-color: red; color: white;">この日の日報を削除</button>
-</form>
+        <form method="post" action="{{ url_for('delete_report', year=year, month=month, day=day) }}" onsubmit="return confirm('この日の日報を本当に削除しますか？');" style="margin-top:18px;">
+            <button type="submit" class="btn-danger">この日の日報を削除</button>
+        </form>
 
-<p><a href="{{ url_for('index') }}">カレンダーに戻る</a></p>
+        <div class="bottom-link">
+            <a href="{{ url_for('index') }}">← カレンダーに戻る</a>
+        </div>
+    </div>
 
 <script>
-    // 患者数の合計を計算する関数
+    // 患者数の合計・再診率
     function calculateTotalPatients(period) {
         const newPatients = parseInt(document.querySelector(`input[name="new_${period}"]`).value) || 0;
         const returningPatients = parseInt(document.querySelector(`input[name="return_${period}"]`).value) || 0;
         const totalPatientsField = document.getElementById(`total_${period}`);
-        const revisitRateField = document.getElementById(`revisit_rate_${period}`); // 再診率表示要素を取得
-
+        const revisitRateField = document.getElementById(`revisit_rate_${period}`);
         const totalPatients = newPatients + returningPatients;
         totalPatientsField.value = totalPatients;
-
-        // 再診率を計算して表示
+        // 再診率
         if (totalPatients > 0) {
             const revisitRate = (returningPatients / totalPatients) * 100;
             revisitRateField.textContent = `${revisitRate.toFixed(2)}%`;
@@ -141,47 +281,38 @@
         }
     }
 
-    // 処置の合計を計算する関数
+    // 処置の合計
     function calculateProcedureTotal(procedureId) {
         const amCount = parseInt(document.querySelector(`input[name="procedure_${procedureId}_AM"]`).value) || 0;
         const pmCount = parseInt(document.querySelector(`input[name="procedure_${procedureId}_PM"]`).value) || 0;
-        // 夜間がある場合はここに追加
         // const nightCount = parseInt(document.querySelector(`input[name="procedure_${procedureId}_夜間"]`).value) || 0;
-
         const totalField = document.getElementById(`procedure_total_${procedureId}`);
-        totalField.value = amCount + pmCount; // + nightCount (夜間がある場合)
+        totalField.value = amCount + pmCount; // + nightCount
     }
 
-    // ページロード時に既存の値で計算を実行
+    // ページロード時に既存の値で計算
     document.addEventListener('DOMContentLoaded', () => {
         calculateTotalPatients('AM');
         calculateTotalPatients('PM');
-
-        // 各処置の合計もページロード時に計算
-        const procedures = {{ procedures | tojson | safe }}; // app.pyから渡されるproceduresマスタ
+        const procedures = {{ procedures | tojson | safe }};
         procedures.forEach(procedure => {
-            calculateProcedureTotal(procedure[0]); // procedure[0] は処置のID
+            calculateProcedureTotal(procedure[0]);
         });
     });
 
-    // ドクター選択ドロップダウンを動的に追加・削除する関数
+    // ドクター選択動的追加
     function addDoctorSelectIfLast(changedSelect, period) {
         const container = document.getElementById(`doctors_container_${period}`);
         const selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`);
         const lastSelect = selects[selects.length - 1];
-
-        // 変更されたドロップダウンが「最後」の空ドロップダウンだった場合
         if (changedSelect === lastSelect && changedSelect.value !== "") {
-            // 新しい空のドロップダウンを作成
             const newSelect = document.createElement('select');
             newSelect.name = `doctors_${period}[]`;
             newSelect.onchange = function() { addDoctorSelectIfLast(this, period); };
-
             const defaultOption = document.createElement('option');
             defaultOption.value = "";
             defaultOption.textContent = "-- 選択してください --";
             newSelect.appendChild(defaultOption);
-
             const allDoctors = JSON.parse('{{ doctors | tojson | safe }}');
             allDoctors.forEach(doctor => {
                 const option = document.createElement('option');
@@ -191,23 +322,16 @@
             });
             container.appendChild(newSelect);
         }
-
-        // 空になったドロップダウンを削除する（ただし、最後の1つは残す）
+        // 空になったドロップダウンを削除
         let filledSelectCount = 0;
-        selects.forEach(select => {
-            if (select.value !== "") {
-                filledSelectCount++;
-            }
-        });
-
+        selects.forEach(select => { if (select.value !== "") { filledSelectCount++; } });
         for (let i = selects.length - 1; i >= 0; i--) {
             const currentSelect = selects[i];
             if (currentSelect.value === "" && currentSelect !== lastSelect && selects.length > (filledSelectCount + 1)) {
-                 container.removeChild(currentSelect);
+                container.removeChild(currentSelect);
             }
         }
     }
 </script>
-
 </body>
 </html>

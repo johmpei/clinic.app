@@ -5,121 +5,108 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ログイン</title>
     <style>
-        /* ここにCSSを記述します */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* モダンなフォント */
-            background-color: #f0f2f5; /* 背景色 */
+            font-family: 'Yu Gothic', '游ゴシック', 'Hiragino Kaku Gothic ProN', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0f2f5;
             display: flex;
-            justify-content: center; /* 水平中央寄せ */
-            align-items: center;     /* 垂直中央寄せ */
-            min-height: 100vh;       /* 画面全体に広げる */
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
             margin: 0;
-            padding: 20px; /* 小さな画面での余白 */
-            box-sizing: border-box; /* パディングを幅に含める */
+            padding: 20px;
+            font-size: 18px; /* 文字を大きく */
         }
-
         .login-container {
-            background-color: #ffffff;
-            padding: 40px;
-            border-radius: 10px; /* 角を丸くする */
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); /* 立体的な影 */
+            background-color: #fff;
+            padding: 46px 36px 38px 36px;
+            border-radius: 14px;
+            box-shadow: 0 6px 24px rgba(30, 30, 60, 0.10);
             width: 100%;
-            max-width: 400px; /* 最大幅を制限 */
+            max-width: 410px;
             text-align: center;
-            box-sizing: border-box;
         }
-
         h1 {
             color: #333;
             margin-bottom: 30px;
-            font-size: 2.2em; /* タイトルを大きく */
-            font-weight: 600; /* 少し太字に */
+            font-size: 2.3em;
+            font-weight: 400;
+            letter-spacing: 1px;
         }
-
-        /* Flashメッセージを非表示にする (既存の ul.flashes がある場合) */
-        {# もし今後、他のメッセージ（エラーなど）も表示したくない場合は、
-           HTMLの {% with messages ... %} ブロックごと削除してください。
-           今回は履歴だけ非表示にするために、CSSで対応します。 #}
         ul.flashes {
-            display: none; /* Flashメッセージリスト全体を非表示 */
+            display: none;
         }
-
         form {
             display: flex;
-            flex-direction: column; /* 要素を縦に並べる */
-            gap: 15px; /* 要素間のスペース */
+            flex-direction: column;
+            gap: 18px;
         }
-
         label {
-            text-align: left; /* ラベルを左寄せに */
-            color: #555;
+            text-align: left;
+            color: #444;
             font-size: 1.05em;
             font-weight: 500;
+            margin-bottom: 1px;
         }
-
         input[type="text"],
         input[type="password"] {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            font-size: 1em;
-            box-sizing: border-box; /* パディングを幅に含める */
-            margin-top: 5px; /* ラベルとの間に少しスペース */
+            padding: 14px 10px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 1.08em;
+            margin-top: 6px;
+            background: #fafbfc;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            box-sizing: border-box;
         }
-
         input[type="text"]:focus,
         input[type="password"]:focus {
-            border-color: #007bff; /* フォーカス時のボーダー色 */
-            outline: none; /* デフォルトのアウトラインを消す */
-            box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.2); /* フォーカス時の影 */
+            border-color: #007bff;
+            outline: none;
+            box-shadow: 0 0 0 2.5px rgba(0, 123, 255, 0.15);
         }
-
         button[type="submit"] {
-            background-color: #007bff; /* 青色のボタン */
+            background-color: #007bff;
             color: white;
-            padding: 12px 25px;
+            padding: 13px 0;
             border: none;
-            border-radius: 5px;
+            border-radius: 7px;
             cursor: pointer;
-            font-size: 1.1em;
+            font-size: 1.14em;
             font-weight: 600;
             width: 100%;
             margin-top: 20px;
-            transition: background-color 0.3s ease; /* ホバー時のアニメーション */
+            box-shadow: 0 2px 10px 0 rgba(0,60,180,0.05);
+            transition: background-color 0.22s, box-shadow 0.22s;
         }
-
         button[type="submit"]:hover {
             background-color: #0056b3;
+            box-shadow: 0 4px 14px 0 rgba(0,60,180,0.08);
         }
-
         p.register-link {
-            margin-top: 30px;
-            font-size: 0.95em;
+            margin-top: 34px;
+            font-size: 1em;
             color: #777;
+            text-align: center;
         }
-
         p.register-link a {
             color: #007bff;
             text-decoration: none;
             font-weight: 500;
+            transition: color 0.18s;
         }
-
         p.register-link a:hover {
             text-decoration: underline;
+            color: #003a80;
         }
     </style>
 </head>
 <body>
     <div class="login-container">
         <h1>ログイン</h1>
-
-        {# FlaskのFlashメッセージ表示ブロックは残しますが、CSSで非表示にします。
-           もし「ログインしました！」以外のエラーメッセージなども一切表示したくない場合は、
-           以下の {% with ... %} から {% endwith %} までを完全に削除しても構いません。 #}
         {% with messages = get_flashed_messages(with_categories=true) %}
           {% if messages %}
-            <ul class="flashes"> {# CSSで display: none; にしています #}
+            <ul class="flashes">
             {% for category, message in messages %}
               <li class="{{ category }}">{{ message }}</li>
             {% endfor %}
@@ -129,11 +116,11 @@
 
         <form method="post">
             <label>
-                ユーザー名:
+                ユーザー名
                 <input type="text" name="username" required placeholder="ユーザー名を入力してください">
             </label>
             <label>
-                パスワード:
+                パスワード
                 <input type="password" name="password" required placeholder="パスワードを入力してください">
             </label>
             <button type="submit">ログイン</button>

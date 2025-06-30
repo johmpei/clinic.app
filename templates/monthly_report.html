@@ -6,15 +6,121 @@
     <title>月報・分析 - {{ year }}年{{ month }}月</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 2em; }
-        .container { max-width: 1000px; margin: auto; }
-        h1, h2 { text-align: center; }
-        form { text-align: center; margin-bottom: 2em; }
-        table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }
-        th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }
-        th { background-color: #F2F2F2; text-align: center;}
-        .chart-container { width: 90%; margin: auto; margin-bottom: 2em; }
-        .back-link { display: block; text-align: center; margin-top: 2em; }
+        body {
+            font-family: 'Yu Gothic', '游ゴシック', 'Hiragino Kaku Gothic ProN', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f9f9f9;
+            color: #333;
+            font-size: 18px;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            max-width: 980px;
+            margin: 44px auto 0 auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(30, 30, 60, 0.08);
+            padding: 48px 42px 38px 42px;
+        }
+        h1 {
+            text-align: center;
+            color: #222;
+            font-size: 2.15em;
+            font-weight: 400;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+        h2 {
+            text-align: left;
+            font-size: 1.16em;
+            color: #007bff;
+            font-weight: 500;
+            border-left: 4px solid #007bff;
+            padding-left: 13px;
+            margin: 38px 0 16px 0;
+            background: linear-gradient(90deg, #eaf3ff 0 80%, transparent 100%);
+        }
+        h3 {
+            font-size: 1.05em;
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 12px;
+        }
+        form {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        select {
+            font-size: 1em;
+            padding: 10px 14px;
+            border: 1px solid #bbb;
+            border-radius: 5px;
+            margin: 0 4px 0 0;
+            background: #fafbfc;
+        }
+        button[type="submit"] {
+            background-color: #007bff;
+            color: #fff;
+            font-size: 1.05em;
+            padding: 10px 28px;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            font-weight: 600;
+            margin-left: 7px;
+            transition: background 0.22s;
+        }
+        button[type="submit"]:hover {
+            background: #0056b3;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 36px;
+            background: #fcfcfc;
+            border-radius: 9px;
+            overflow: hidden;
+            box-shadow: 0 1px 4px 0 rgba(0,0,0,0.03);
+        }
+        th, td {
+            border: 1px solid #e0e0e0;
+            padding: 13px 12px;
+            text-align: right;
+            font-size: 1.06em;
+        }
+        th {
+            background: #f5f5f5;
+            color: #444;
+            font-weight: normal;
+            text-align: center;
+        }
+        .chart-container {
+            width: 95%;
+            max-width: 700px;
+            margin: 0 auto 38px auto;
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 18px 16px 12px 16px;
+            box-shadow: 0 2px 8px 0 rgba(30, 30, 60, 0.03);
+        }
+        .back-link {
+            display: block;
+            text-align: left;
+            margin-top: 38px;
+            color: #007bff;
+            text-decoration: none;
+            font-size: 1.1em;
+            transition: color 0.18s;
+        }
+        .back-link:hover {
+            color: #003a80;
+            text-decoration: underline;
+        }
+        @media (max-width: 700px) {
+            .container { padding: 14px 2vw 14px 2vw; }
+            .chart-container { width: 100%; padding: 8px 2vw; }
+            table th, table td { font-size: 1em; padding: 8px 4px; }
+        }
     </style>
 </head>
 <body>
@@ -39,7 +145,7 @@
             <tr>
                 <th>項目</th>
                 <th>{{ year }}年{{ month }}月</th>
-                <th>{{ year - 1 }}年{{ month }}月 (前年同月)</th>
+                <th>{{ year - 1 }}年{{ month }}月<br>（前年同月）</th>
                 <th>前年同月比</th>
             </tr>
         </thead>
@@ -103,7 +209,7 @@
         <h3>患者数推移</h3>
         <canvas id="patientsChart"></canvas>
     </div>
-    <a href="{{ url_for('index') }}" class="back-link">カレンダーに戻る</a>
+    <a href="{{ url_for('index') }}" class="back-link">← カレンダーに戻る</a>
 </div>
 <script>
     // Flaskから渡されたデータをJavaScript変数に変換
@@ -111,12 +217,12 @@
     // 1. 売上推移グラフ
     const salesCtx = document.getElementById('salesChart').getContext('2d');
     const salesChart = new Chart(salesCtx, {
-        type: 'line', // グラフの種類 (線グラフ)
+        type: 'line',
         data: {
-            labels: trendData.days, // X軸のラベル (日)
+            labels: trendData.days,
             datasets: [{
                 label: '日次売上 (円)',
-                data: trendData.sales, // Y軸のデータ (売上)
+                data: trendData.sales,
                 borderColor: 'rgba(75, 192, 192, 1)',
                 backgroundColor: 'rgba(75, 192, 192, 0.2)',
                 fill: true,
@@ -127,12 +233,12 @@
     // 2. 患者数推移グラフ
     const patientsCtx = document.getElementById('patientsChart').getContext('2d');
     const patientsChart = new Chart(patientsCtx, {
-        type: 'bar', // グラフの種類 (棒グラフ)
+        type: 'bar',
         data: {
-            labels: trendData.days, // X軸のラベル (日)
+            labels: trendData.days,
             datasets: [{
                 label: '日次患者数 (人)',
-                data: trendData.patients, // Y軸のデータ (患者数)
+                data: trendData.patients,
                 borderColor: 'rgba(255, 99, 132, 1)',
                 backgroundColor: 'rgba(255, 99, 132, 0.5)',
             }]

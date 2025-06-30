@@ -3,47 +3,167 @@
 <head>
     <meta charset="UTF-8">
     <title>マスタ管理</title>
+    <style>
+        body {
+            font-family: 'Yu Gothic', '游ゴシック', 'Hiragino Kaku Gothic ProN', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f9f9f9;
+            color: #333;
+            margin: 0;
+            padding: 0;
+            font-size: 18px;
+        }
+        .main-content {
+            max-width: 620px;
+            margin: 44px auto 0 auto;
+            background: #fff;
+            border-radius: 14px;
+            box-shadow: 0 4px 20px rgba(30, 30, 60, 0.09);
+            padding: 42px 40px 36px 40px;
+        }
+        h1 {
+            font-size: 2em;
+            font-weight: 400;
+            color: #222;
+            margin-bottom: 28px;
+        }
+        h2 {
+            font-size: 1.15em;
+            font-weight: 500;
+            margin: 34px 0 14px 0;
+            color: #007bff;
+            letter-spacing: 1px;
+            border-left: 4px solid #007bff;
+            padding-left: 10px;
+            background: linear-gradient(90deg, #eaf3ff 0 70%, transparent 100%);
+        }
+        .message {
+            color: #26a641;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+        form {
+            margin-bottom: 22px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        label {
+            font-size: 1em;
+            color: #333;
+            font-weight: 500;
+        }
+        input[type="text"] {
+            padding: 10px 12px;
+            border: 1px solid #bbb;
+            border-radius: 5px;
+            font-size: 1.07em;
+            background: #fafbfc;
+            margin-right: 5px;
+        }
+        button {
+            background: #007bff;
+            color: #fff;
+            font-size: 1em;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.22s;
+            margin-left: 4px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .delete-btn {
+            background: #e03e2f;
+            color: #fff;
+            font-weight: 500;
+            border: none;
+            border-radius: 6px;
+            padding: 7px 18px;
+            margin-left: 12px;
+            font-size: 0.95em;
+            transition: background 0.18s;
+        }
+        .delete-btn:hover {
+            background: #b91d06;
+        }
+        ul {
+            list-style: none;
+            padding: 0;
+            margin: 0 0 20px 0;
+        }
+        li {
+            background: #f5f8fa;
+            border-radius: 8px;
+            margin-bottom: 9px;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            font-size: 1em;
+            justify-content: space-between;
+        }
+        .item-label {
+            flex: 1 1 auto;
+        }
+        .back-link {
+            display: block;
+            margin-top: 36px;
+            color: #007bff;
+            text-decoration: none;
+            font-size: 1.08em;
+            transition: color 0.18s;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+            color: #003a80;
+        }
+    </style>
 </head>
 <body>
-    <h1>マスタ管理</h1>
-    {% if message %}
-        <p style="color:green">{{ message }}</p>
-    {% endif %}
+    <div class="main-content">
+        <h1>マスタ管理</h1>
+        {% if message %}
+            <p class="message">{{ message }}</p>
+        {% endif %}
 
-    <h2>ドクター管理</h2>
-    <form method="post">
-        <label>新規ドクター名: <input type="text" name="add_doctor_name" required></label>
-        <button type="submit">追加</button>
-    </form>
-    <ul>
-        {% for doctor in doctors %}
-            <li>
-                {{ doctor[1] }} 
-                <form method="post" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
-                    <input type="hidden" name="delete_doctor_id" value="{{ doctor[0] }}">
-                    <button type="submit">削除</button>
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
+        <h2>ドクター管理</h2>
+        <form method="post">
+            <label>新規ドクター名: <input type="text" name="add_doctor_name" required></label>
+            <button type="submit">追加</button>
+        </form>
+        <ul>
+            {% for doctor in doctors %}
+                <li>
+                    <span class="item-label">{{ doctor[1] }}</span>
+                    <form method="post" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
+                        <input type="hidden" name="delete_doctor_id" value="{{ doctor[0] }}">
+                        <button type="submit" class="delete-btn">削除</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
 
-    <h2>処置内容管理</h2>
-    <form method="post">
-        <label>新規処置名: <input type="text" name="add_procedure_name" required></label>
-        <button type="submit">追加</button>
-    </form>
-    <ul>
-        {% for procedure in procedures %}
-            <li>
-                {{ procedure[1] }}
-                <form method="post" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
-                    <input type="hidden" name="delete_procedure_id" value="{{ procedure[0] }}">
-                    <button type="submit">削除</button>
-                </form>
-            </li>
-        {% endfor %}
-    </ul>
+        <h2>処置内容管理</h2>
+        <form method="post">
+            <label>新規処置名: <input type="text" name="add_procedure_name" required></label>
+            <button type="submit">追加</button>
+        </form>
+        <ul>
+            {% for procedure in procedures %}
+                <li>
+                    <span class="item-label">{{ procedure[1] }}</span>
+                    <form method="post" style="display:inline;" onsubmit="return confirm('本当に削除しますか？');">
+                        <input type="hidden" name="delete_procedure_id" value="{{ procedure[0] }}">
+                        <button type="submit" class="delete-btn">削除</button>
+                    </form>
+                </li>
+            {% endfor %}
+        </ul>
 
-    <p><a href="{{ url_for('index') }}">カレンダーに戻る</a></p>
+        <a href="{{ url_for('index') }}" class="back-link">← カレンダーに戻る</a>
+    </div>
 </body>
 </html>
