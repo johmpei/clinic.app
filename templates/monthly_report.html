@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>月報・分析 - {{ year }}年{{ month }}月</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        .container { max-width: 1000px; margin: auto; }
+        h1, h2 { text-align: center; }
+        form { text-align: center; margin-bottom: 2em; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 2em; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: right; }
+        th { background-color: #F2F2F2; text-align: center;}
+        .chart-container { width: 90%; margin: auto; margin-bottom: 2em; }
+        .back-link { display: block; text-align: center; margin-top: 2em; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>月報・分析レポート</h1>
+    <form method="post">
+        <select name="year">
+            {% for y in year_options %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}年</option>
+            {% endfor %}
+        </select>
+        <select name="month">
+            {% for m in range(1, 13) %}
+                <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}月</option>
+            {% endfor %}
+        </select>
+        <button type="submit">表示</button>
+    </form>
+    <h2>{{ year }}年{{ month }}月 サマリー</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>項目</th>
+                <th>{{ year }}年{{ month }}月</th>
+                <th>{{ year - 1 }}年{{ month }}月 (前年同月)</th>
+                <th>前年同月比</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <th>総売上</th>
+                <td>{{ "{:,.0f}".format(current_data.total_sales) }} 円</td>
+                <td>{{ "{:,.0f}".format(last_year_data.total_sales) }} 円</td>
+                <td>
+                    {% if last_year_data.total_sales > 0 %}
+                        {{ "{:.1%}".format(current_data.total_sales / last_year_data.total_sales) }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>総ポイント</th>
+                <td>{{ "{:,.0f}".format(current_data.total_points) }}</td>
+                <td>{{ "{:,.0f}".format(last_year_data.total_points) }}</td>
+                <td>
+                     {% if last_year_data.total_points > 0 %}
+                        {{ "{:.1%}".format(current_data.total_points / last_year_data.total_points) }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>総患者数</th>
+                <td>{{ current_data.total_patients }} 人</td>
+                <td>{{ last_year_data.total_patients }} 人</td>
+                <td>
+                    {% if last_year_data.total_patients > 0 %}
+                        {{ "{:.1%}".format(current_data.total_patients / last_year_data.total_patients) }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>(内訳) 新規患者数</th>
+                <td>{{ current_data.new_patients }} 人</td>
+                <td>{{ last_year_data.new_patients }} 人</td>
+                <td></td>
+            </tr>
+            <tr>
+                <th>(内訳) 再診患者数</th>
+                <td>{{ current_data.returning_patients }} 人</td>
+                <td>{{ last_year_data.returning_patients }} 人</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+    <h2>日次推移グラフ</h2>
+    <div class="chart-container">
+        <h3>売上推移</h3>
+        <canvas id="salesChart"></canvas>
+    </div>
+    <div class="chart-container">
+        <h3>患者数推移</h3>
+        <canvas id="patientsChart"></canvas>
+    </div>
+    <a href="{{ url_for('index') }}" class="back-link">カレンダーに戻る</a>
+</div>
+<script>
+    // Flaskから渡されたデータをJavaScript変数に変換
+    const trendData = {{ trend_data | tojson }};
+    // 1. 売上推移グラフ
+    const salesCtx = document.getElementById('salesChart').getContext('2d');
+    const salesChart = new Chart(salesCtx, {
+        type: 'line', // グラフの種類 (線グラフ)
+        data: {
+            labels: trendData.days, // X軸のラベル (日)
+            datasets: [{
+                label: '日次売上 (円)',
+                data: trendData.sales, // Y軸のデータ (売上)
+                borderColor: 'rgba(75, 192, 192, 1)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                fill: true,
+                tension: 0.1
+            }]
+        }
+    });
+    // 2. 患者数推移グラフ
+    const patientsCtx = document.getElementById('patientsChart').getContext('2d');
+    const patientsChart = new Chart(patientsCtx, {
+        type: 'bar', // グラフの種類 (棒グラフ)
+        data: {
+            labels: trendData.days, // X軸のラベル (日)
+            datasets: [{
+                label: '日次患者数 (人)',
+                data: trendData.patients, // Y軸のデータ (患者数)
+                borderColor: 'rgba(255, 99, 132, 1)',
+                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+            }]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>

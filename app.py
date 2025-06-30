@@ -475,5 +475,88 @@ def manage_masters():
     conn.close()
     return render_template('manage_masters.html', doctors=doctors, procedures=procedures, message=message)
 
+
+# 月次レポートのデータを取得するヘルパー関数
+def get_monthly_data(year, month, clinic_id):
+    """指定された年月の集計データを取得する"""
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    # SQLクエリ: total_sales, total_points, 各患者数の合計を取得
+    cursor.execute("""
+        SELECT
+            SUM(dr.total_sales),
+            SUM(dr.total_points),
+            SUM(s.new_patients),
+            SUM(s.returning_patients),
+            SUM(s.total_patients)
+        FROM daily_reports dr
+        LEFT JOIN (
+            SELECT daily_report_id,
+                   SUM(new_patients) as new_patients,
+                   SUM(returning_patients) as returning_patients,
+                   SUM(total_patients) as total_patients
+            FROM shifts GROUP BY daily_report_id
+        ) s ON dr.id = s.daily_report_id
+        WHERE dr.clinic_id = ? AND STRFTIME('%Y', dr.date) = ? AND STRFTIME('%m', dr.date) = ?
+    """, (clinic_id, str(year), f"{month:02d}"))
+    data = cursor.fetchone()
+    conn.close()
+    # データがない場合は0を返す
+    return {
+        'total_sales': data[0] or 0,
+        'total_points': data[1] or 0,
+        'new_patients': data[2] or 0,
+        'returning_patients': data[3] or 0,
+        'total_patients': data[4] or 0
+    }
+# 日次データをグラフ用に取得するヘルパー関数
+def get_daily_trend_data(year, month, clinic_id):
+    """グラフ用に日ごとの売上と患者数を取得する"""
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT
+            CAST(STRFTIME('%d', dr.date) AS INTEGER) as day,
+            dr.total_sales,
+            (SELECT SUM(total_patients) FROM shifts s WHERE s.daily_report_id = dr.id) as daily_total_patients
+        FROM daily_reports dr
+        WHERE dr.clinic_id = ? AND STRFTIME('%Y', dr.date) = ? AND STRFTIME('%m', dr.date) = ?
+        ORDER BY day
+    """, (clinic_id, str(year), f"{month:02d}"))
+    days = []
+    sales = []
+    patients = []
+    for row in cursor.fetchall():
+        days.append(row[0])
+        sales.append(row[1] or 0)
+        patients.append(row[2] or 0)
+    conn.close()
+    return {'days': days, 'sales': sales, 'patients': patients}
+@app.route('/monthly_report', methods=['GET', 'POST'])
+@login_required
+def monthly_report():
+    clinic_id = session.get('clinic_id')
+    today = date.today()
+    # フォームから年月の指定がなければ、現在の年月を使用
+    year = request.form.get('year', default=today.year, type=int)
+    month = request.form.get('month', default=today.month, type=int)
+    # ① 当月の集計データ
+    current_month_data = get_monthly_data(year, month, clinic_id)
+    # ② 前年同月の集計データ
+    last_year_data = get_monthly_data(year - 1, month, clinic_id)
+    # グラフ用の日次推移データ
+    trend_data = get_daily_trend_data(year, month, clinic_id)
+    # テンプレートに渡すための年リスト (過去10年分など)
+    year_options = range(today.year, today.year - 10, -1)
+    return render_template(
+        'monthly_report.html',
+        year=year,
+        month=month,
+        year_options=year_options,
+        current_data=current_month_data,
+        last_year_data=last_year_data,
+        trend_data=trend_data # グラフ用データを渡す
+    )
+
 if __name__ == '__main__':
     app.run(debug=True)
