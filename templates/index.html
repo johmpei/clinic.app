@@ -10,38 +10,55 @@
         a { text-decoration: none; color: #005; }
         a:hover { text-decoration: underline; color: #1976d2; }
         .summary-info { font-size: 0.8em; color: #555; }
+
+        /* 土日祝日のスタイルを、<td>内の<a>に適用するように修正 */
+        .saturday a { color: blue; }
+        .sunday a, .holiday a { color: red; }
     </style>
 </head>
 <body>
     <h1>{{ year }}年{{ month }}月のカレンダー</h1>
     <p><a href="{{ url_for('logout') }}">ログアウト</a></p>
+
+<p>
+    <a href="{{ url_for('index', year=prev_year, month=prev_month) }}">前の月</a> |
+    <a href="{{ url_for('index') }}">今月</a> |
+    <a href="{{ url_for('index', year=next_year, month=next_month) }}">次の月</a>
+</p>
+
     <table>
         <tr>
             <th>日</th><th>月</th><th>火</th><th>水</th><th>木</th><th>金</th><th>土</th>
         </tr>
         {% for week in month_days %}
         <tr>
-            {% for day in week %}
-                <td>
-                    {% if day != 0 %}
-                        <a href="{{ url_for('daily_report', year=year, month=month, day=day) }}">
-                            {{ day }}
-                            {% if daily_summaries[day] %}
+            {% for day_num in week %}
+                {% if day_num != 0 %}
+                    {% set current_date = date_class(year, month, day_num) %}
+                    <td class="
+                        {% if loop.index0 == 0 or current_date in jp_holidays %}
+                            sunday holiday
+                        {% elif loop.index0 == 6 %}
+                            saturday
+                        {% endif %}
+                    ">
+                        <a href="{{ url_for('daily_report', year=year, month=month, day=day_num) }}">
+                            {{ day_num }}
+                            {% if daily_summaries[day_num] %}
                                 <div class="summary-info">
-                                    患者数: {{ daily_summaries[day].total_patients }}<br>
-                                    売上: {{ daily_summaries[day].total_sales }}
+                                    患者数: {{ daily_summaries[day_num].total_patients }}<br>
+                                    売上: {{ daily_summaries[day_num].total_sales }}
                                 </div>
                             {% endif %}
                         </a>
-                    {% endif %}
-                </td>
+                    </td>
+                {% else %}
+                    <td></td>
+                {% endif %}
             {% endfor %}
         </tr>
         {% endfor %}
     </table>
 <p><a href="{{ url_for('manage_masters') }}">マスタ管理</a></p>
-
-
-
 </body>
 </html>

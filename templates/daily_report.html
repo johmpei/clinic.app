@@ -60,15 +60,15 @@
         <th>新患</th>
         <th>再診</th>
         <th>合計</th>
+        <th>再診率</th> {# ここを追加 #}
     </tr>
     {% for period in ['AM', 'PM'] %}
     <tr>
         <td>{{ period }}</td>
-        {# 新患と再診の入力時に合計を計算するようoninputイベントを追加 #}
         <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
         <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
-        {# 合計はJavaScriptで計算するためreadonly属性を追加し、idを設定 #}
         <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}" id="total_{{ period }}" readonly></td>
+        <td><span id="revisit_rate_{{ period }}">0.00%</span></td> {# ここを追加 #}
     </tr>
     {% endfor %}
 </table>
@@ -80,7 +80,7 @@
         <th>AM</th>
         <th>PM</th>
         <th>夜間</th>
-        <th>合計</th> {# ここを追加 #}
+        <th>合計</th>
     </tr>
     {% for procedure in procedures %}
     <tr>
@@ -91,7 +91,7 @@
                    name="procedure_{{ procedure[0] }}_{{ period }}"
                    min="0"
                    value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and procedures_records[procedure[0]][period] is defined else 0 }}"
-                   oninput="calculateProcedureTotal('{{ procedure[0] }}')"> {# ここにoninputイベントを追加 #}
+                   oninput="calculateProcedureTotal('{{ procedure[0] }}')">
         </td>
         {% endfor %}
         <td>
@@ -101,10 +101,10 @@
             <input type="number"
                    name="procedure_total_{{ procedure[0] }}"
                    min="0"
-                   value="0" {# 初期値は0。JavaScriptで計算される #}
+                   value="0"
                    id="procedure_total_{{ procedure[0] }}"
-                   readonly> {# 合計は自動計算されるためreadonly #}
-        </td> {# ここを追加 #}
+                   readonly>
+        </td>
     </tr>
     {% endfor %}
 </table>
@@ -127,7 +127,18 @@
         const newPatients = parseInt(document.querySelector(`input[name="new_${period}"]`).value) || 0;
         const returningPatients = parseInt(document.querySelector(`input[name="return_${period}"]`).value) || 0;
         const totalPatientsField = document.getElementById(`total_${period}`);
-        totalPatientsField.value = newPatients + returningPatients;
+        const revisitRateField = document.getElementById(`revisit_rate_${period}`); // 再診率表示要素を取得
+
+        const totalPatients = newPatients + returningPatients;
+        totalPatientsField.value = totalPatients;
+
+        // 再診率を計算して表示
+        if (totalPatients > 0) {
+            const revisitRate = (returningPatients / totalPatients) * 100;
+            revisitRateField.textContent = `${revisitRate.toFixed(2)}%`;
+        } else {
+            revisitRateField.textContent = '0.00%';
+        }
     }
 
     // 処置の合計を計算する関数
