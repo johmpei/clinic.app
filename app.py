@@ -160,11 +160,16 @@ def index(year=None, month=None): # URLからyearとmonthを受け取る（デ�
 # ★ここまでdef index():関数の新しい内容に置き換えてください★
 
 
-
 @app.route('/report/<int:year>/<int:month>/<int:day>', methods=['GET', 'POST'])
-@login_required # login_required デコレータを追加
+@login_required
 def daily_report(year, month, day):
-    report_date = f"{year:04d}-{month:02d}-{day:02d}"
+    report_date_obj = date(year, month, day) # 現在の日付オブジェクト
+    report_date = report_date_obj.strftime("%Y-%m-%d") # データベース検索用の文字列
+
+    # 前の日と次の日の計算
+    prev_day_obj = report_date_obj - timedelta(days=1)
+    next_day_obj = report_date_obj + timedelta(days=1)
+
     clinic_id = session.get('clinic_id')
     if not clinic_id:
         flash('クリニック情報が見つかりません。再ログインしてください。', 'danger')
@@ -265,7 +270,7 @@ def daily_report(year, month, day):
             )
             daily_report_id = cursor.lastrowid
 
-        for period in ['AM', 'PM']:
+        for period in ['AM', 'PM']: # '夜間' は現在HTML側にinputがないため除外
             new_patients = request.form.get(f'new_{period}', 0)
             returning_patients = request.form.get(f'return_{period}', 0)
             total_patients = request.form.get(f'total_{period}', 0)
@@ -287,7 +292,7 @@ def daily_report(year, month, day):
                 )
 
         for procedure_id, _ in procedures_master:
-            for period in ['AM', 'PM']:
+            for period in ['AM', 'PM']: # '夜間' は現在HTML側にinputがないため除外
                 count = request.form.get(f'procedure_{procedure_id}_{period}', 0)
 
                 cursor.execute(
@@ -307,8 +312,8 @@ def daily_report(year, month, day):
                     )
 
         cursor.execute("DELETE FROM daily_doctor_shifts WHERE daily_report_id=?", (daily_report_id,))
-        for period in ['AM', 'PM']:
-            selected_doctors = request.form.getlist(f'doctors_{period}[]') # ここを 'doctors_{period}[]' に変更
+        for period in ['AM', 'PM']: # '夜間' は現在HTML側にselectがないため除外
+            selected_doctors = request.form.getlist(f'doctors_{period}[]')
             selected_doctors = [int(doc_id) for doc_id in selected_doctors if doc_id.strip() != '']
 
             for doctor_id in selected_doctors:
@@ -320,7 +325,7 @@ def daily_report(year, month, day):
         conn.commit()
         message = "保存しました！"
 
-        # 保存直後のデータを再取得して反映する
+        # 保存直後のデータを再取得して反映する (これは変更なしでOK)
         cursor.execute(
             "SELECT total_points, total_sales FROM daily_reports WHERE clinic_id=? AND date=?",
             (clinic_id, report_date)
@@ -380,9 +385,6 @@ def daily_report(year, month, day):
 
     conn.close()
 
-    # 'daily_report.html' に date オブジェクトを渡す
-    selected_date_obj = date(year, month, day)
-
     return render_template(
         'daily_report.html',
         year=year, month=month, day=day,
@@ -393,7 +395,13 @@ def daily_report(year, month, day):
         doctors=doctors_master,
         daily_doctors=daily_doctors,
         message=message,
-        date=selected_date_obj # この行は元々正しいため変更なし
+        date=report_date_obj, # 現在の日付オブジェクト
+        prev_day_year=prev_day_obj.year, # 前の日の年
+        prev_day_month=prev_day_obj.month, # 前の日の月
+        prev_day_day=prev_day_obj.day, # 前の日
+        next_day_year=next_day_obj.year, # 次の日の年
+        next_day_month=next_day_obj.month, # 次の日の月
+        next_day_day=next_day_obj.day # 次の日
     )
 
 
@@ -559,4 +567,4 @@ def monthly_report():
     )
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True)s
