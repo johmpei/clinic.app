@@ -6,9 +6,9 @@ import functools
 import holidays
 
 app = Flask(__name__)
-app.secret_key = 'your_secret_key_here'
+app.secret_key = 'your_secret_key_here' # 本番環境ではより複雑なものに変更してください
 
-# 各ルートの保護 (login_required デコレータの定義をここに移動)
+# 各ルートの保護 (login_required デコレータ)
 def login_required(f):
     @functools.wraps(f)
     def decorated_function(*args, **kwargs):
@@ -18,7 +18,102 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-# ★ここから追加・確認してください★
+# データベースの初期化関数
+def init_db():
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    # clinics テーブルが存在しない場合のみ作成
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS clinics (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL UNIQUE
+        )
+    """)
+    # users テーブルが存在しない場合のみ作成 (clinic_idを追加)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            clinic_id INTEGER,
+            FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+        )
+    """)
+    # daily_reports テーブルが存在しない場合のみ作成
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS daily_reports (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clinic_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            total_points INTEGER DEFAULT 0,
+            total_sales INTEGER DEFAULT 0,
+            UNIQUE(clinic_id, date),
+            FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+        )
+    """)
+    # shifts テーブルが存在しない場合のみ作成
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS shifts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            daily_report_id INTEGER NOT NULL,
+            time_period TEXT NOT NULL, -- 'AM', 'PM', '夜間'
+            new_patients INTEGER DEFAULT 0,
+            returning_patients INTEGER DEFAULT 0,
+            total_patients INTEGER DEFAULT 0,
+            FOREIGN KEY (daily_report_id) REFERENCES daily_reports(id) ON DELETE CASCADE,
+            UNIQUE(daily_report_id, time_period)
+        )
+    """)
+    # procedures テーブルが存在しない場合のみ作成
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS procedures (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clinic_id INTEGER NOT NULL,
+            name TEXT NOT NULL UNIQUE,
+            FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+        )
+    """)
+    # procedure_records テーブルが存在しない場合のみ作成
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS procedure_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            daily_report_id INTEGER NOT NULL,
+            procedure_id INTEGER NOT NULL,
+            time_period TEXT NOT NULL, -- 'AM', 'PM', '夜間'
+            count INTEGER DEFAULT 0,
+            FOREIGN KEY (daily_report_id) REFERENCES daily_reports(id) ON DELETE CASCADE,
+            FOREIGN KEY (procedure_id) REFERENCES procedures(id) ON DELETE CASCADE,
+            UNIQUE(daily_report_id, procedure_id, time_period)
+        )
+    """)
+    # doctors テーブルが存在しない場合のみ作成
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS doctors (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            clinic_id INTEGER NOT NULL,
+            name TEXT NOT NULL UNIQUE,
+            FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+        )
+    """)
+    # daily_doctor_shifts テーブルが存在しない場合のみ作成
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS daily_doctor_shifts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            daily_report_id INTEGER NOT NULL,
+            doctor_id INTEGER NOT NULL,
+            time_period TEXT NOT NULL, -- 'AM', 'PM', '夜間'
+            FOREIGN KEY (daily_report_id) REFERENCES daily_reports(id) ON DELETE CASCADE,
+            FOREIGN KEY (doctor_id) REFERENCES doctors(id) ON DELETE CASCADE,
+            UNIQUE(daily_report_id, doctor_id, time_period)
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+# アプリケーション起動時にDB初期化を実行
+with app.app_context():
+    init_db()
+
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
@@ -33,7 +128,7 @@ def login():
 
         if user and check_password_hash(user[1], password):
             session['user_id'] = user[0]
-            session['clinic_id'] = user[2]
+            session['clinic_id'] = user[2] # ログイン時にclinic_idをセッションに保存
             flash('ログインしました！', 'success')
             return redirect(url_for('index'))
         else:
@@ -52,7 +147,7 @@ def register():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        clinic_name = request.form['clinic_name']
+        clinic_name = request.form['clinic_name'] # clinic_idではなくclinic_nameを受け取る
 
         hashed_password = generate_password_hash(password, method='pbkdf2:sha256')
 
@@ -61,7 +156,7 @@ def register():
         try:
             # クリニックを登録
             cursor.execute("INSERT INTO clinics (name) VALUES (?)", (clinic_name,))
-            clinic_id = cursor.lastrowid
+            clinic_id = cursor.lastrowid # 新しく作成されたクリニックのIDを取得
             
             # ユーザーを登録 (clinic_idと紐付け)
             cursor.execute("INSERT INTO users (username, password_hash, clinic_id) VALUES (?, ?, ?)",
@@ -69,32 +164,33 @@ def register():
             conn.commit()
             flash('アカウントが作成されました！ログインしてください。', 'success')
             return redirect(url_for('login'))
-        except sqlite3.IntegrityError:
+        except sqlite3.IntegrityError as e:
             conn.rollback()
-            flash('そのユーザー名は既に存在します。', 'danger')
+            # エラーメッセージをより具体的に
+            if "UNIQUE constraint failed: users.username" in str(e):
+                flash('そのユーザー名は既に存在します。', 'danger')
+            elif "UNIQUE constraint failed: clinics.name" in str(e):
+                flash('そのクリニック名は既に存在します。別の名前を試してください。', 'danger')
+            else:
+                flash(f'登録中にエラーが発生しました: {e}', 'danger')
         except Exception as e:
             conn.rollback()
-            flash(f'登録中にエラーが発生しました: {e}', 'danger')
+            flash(f'予期せぬエラーが発生しました: {e}', 'danger')
         finally:
             conn.close()
-    return render_template('register.html')
-# ★ここまで追加・確認してください★
-
+    return render_template('register.html') # clinicsデータは不要なので渡さない
 
 @app.route('/')
-@app.route('/<int:year>/<int:month>') # /YYYY/MM の形式のURLも受け入れる
+@app.route('/<int:year>/<int:month>')
 @login_required
-def index(year=None, month=None): # URLからyearとmonthを受け取る（デフォルトはNone）
+def index(year=None, month=None):
     today = date.today()
 
-    # URLにyearやmonthが指定されていない場合、または不正な値の場合、今日の日付をデフォルトとする
     if year is None or not isinstance(year, int):
         year = today.year
     if month is None or not isinstance(month, int) or not (1 <= month <= 12):
         month = today.month
 
-    # 月の移動ロジックを修正: 日数ではなく月を直接計算
-    # 次の月を計算
     if month == 12:
         next_month = 1
         next_year = year + 1
@@ -102,7 +198,6 @@ def index(year=None, month=None): # URLからyearとmonthを受け取る（デ�
         next_month = month + 1
         next_year = year
 
-    # 前の月を計算
     if month == 1:
         prev_month = 12
         prev_year = year - 1
@@ -110,40 +205,57 @@ def index(year=None, month=None): # URLからyearとmonthを受け取る（デ�
         prev_month = month - 1
         prev_year = year
 
-    # カレンダーのデータ準備
     cal = calendar.Calendar(firstweekday=6) # 週の始まりを日曜日に設定 (0=月曜, 6=日曜)
     month_days = cal.monthdayscalendar(year, month)
-    clinic_id = session.get('clinic_id') # 現在ログインしているクリニックのIDを取得
+    
+    user_id = session.get('user_id')
+    username = "ゲスト"
+    clinic_name = "未所属クリニック"
+    clinic_id = session.get('clinic_id') # セッションからclinic_idを取得
 
-    # 日報サマリーの取得
-    daily_summaries = {}
     conn = sqlite3.connect('daily_report.db')
     cursor = conn.cursor()
+    
+    if user_id:
+        cursor.execute("SELECT username, clinic_id FROM users WHERE id=?", (user_id,))
+        user_data = cursor.fetchone()
+        if user_data:
+            username = user_data[0]
+            # データベースから取得したclinic_idを優先
+            clinic_id_from_db = user_data[1] 
+            if clinic_id_from_db and clinic_id_from_db != clinic_id:
+                session['clinic_id'] = clinic_id_from_db # セッションも更新
+                clinic_id = clinic_id_from_db
 
-    # 特定の年月の売上と患者数を集計
-    cursor.execute("""
-        SELECT
-            strftime('%d', DR.date) as day,
-            SUM(S.total_patients) as total_patients,
-            DR.total_points -- total_salesをtotal_pointsに変更
-        FROM daily_reports DR
-        LEFT JOIN shifts S ON DR.id = S.daily_report_id
-        WHERE DR.clinic_id = ? AND strftime('%Y', DR.date) = ? AND strftime('%m', DR.date) = ?
-        GROUP BY DR.date
-    """, (clinic_id, str(year), f"{month:02d}")) # 月を2桁のゼロ埋め文字列にフォーマット
+            if clinic_id:
+                cursor.execute("SELECT name FROM clinics WHERE id=?", (clinic_id,))
+                clinic_data = cursor.fetchone()
+                if clinic_data:
+                    clinic_name = clinic_data[0]
 
-    for row in cursor.fetchall():
-        day_str, total_patients, total_points = row # total_salesをtotal_pointsに変更
-        daily_summaries[int(day_str)] = {
-            'total_patients': total_patients if total_patients is not None else 0,
-            'total_points': total_points if total_points is not None else 0 # total_salesをtotal_pointsに変更
-        }
+    daily_summaries = {}
+    if clinic_id: # clinic_idがある場合のみデータを取得
+        cursor.execute("""
+            SELECT
+                strftime('%d', DR.date) as day,
+                SUM(S.total_patients) as total_patients,
+                DR.total_points
+            FROM daily_reports DR
+            LEFT JOIN shifts S ON DR.id = S.daily_report_id
+            WHERE DR.clinic_id = ? AND strftime('%Y', DR.date) = ? AND strftime('%m', DR.date) = ?
+            GROUP BY DR.date
+        """, (clinic_id, str(year), f"{month:02d}"))
+
+        for row in cursor.fetchall():
+            day_str, total_patients, total_points = row
+            daily_summaries[int(day_str)] = {
+                'total_patients': total_patients if total_patients is not None else 0,
+                'total_points': total_points if total_points is not None else 0
+            }
     conn.close()
 
-    # 日本の祝日を取得
     jp_holidays = holidays.Japan()
 
-    # テンプレートをレンダリングして表示
     return render_template(
         'index.html',
         year=year,
@@ -155,39 +267,52 @@ def index(year=None, month=None): # URLからyearとmonthを受け取る（デ�
         next_year=next_year,
         next_month=next_month,
         jp_holidays=jp_holidays,
-        date_class=date # datetime.dateオブジェクトをテンプレートで使えるように渡す
+        date_class=date,
+        username=username,
+        clinic_name=clinic_name # クリニック名をテンプレートに渡す
     )
-# ★ここまでdef index():関数の新しい内容に置き換えてください★
-
 
 @app.route('/report/<int:year>/<int:month>/<int:day>', methods=['GET', 'POST'])
 @login_required
 def daily_report(year, month, day):
-    report_date_obj = date(year, month, day) # 現在の日付オブジェクト
-    report_date = report_date_obj.strftime("%Y-%m-%d") # データベース検索用の文字列
+    report_date_obj = date(year, month, day)
+    report_date = report_date_obj.strftime("%Y-%m-%d")
 
-    # 前の日と次の日の計算
     prev_day_obj = report_date_obj - timedelta(days=1)
     next_day_obj = report_date_obj + timedelta(days=1)
 
     clinic_id = session.get('clinic_id')
+    user_id = session.get('user_id')
+    username = "ゲスト"
+    clinic_name = "未所属クリニック"
+
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("SELECT username, clinic_id FROM users WHERE id=?", (user_id,))
+        user_data = cursor.fetchone()
+        if user_data:
+            username = user_data[0]
+            current_clinic_id = user_data[1]
+            if current_clinic_id:
+                cursor.execute("SELECT name FROM clinics WHERE id=?", (current_clinic_id,))
+                clinic_data = cursor.fetchone()
+                if clinic_data:
+                    clinic_name = clinic_data[0]
+
     if not clinic_id:
         flash('クリニック情報が見つかりません。再ログインしてください。', 'danger')
+        conn.close()
         return redirect(url_for('login'))
 
     message = None
 
-    conn = sqlite3.connect('daily_report.db')
-    cursor = conn.cursor()
-
-    # 必要なマスタを都度取得
     cursor.execute("SELECT id, name FROM procedures WHERE clinic_id=?", (clinic_id,))
     procedures_master = cursor.fetchall()
 
     cursor.execute("SELECT id, name FROM doctors WHERE clinic_id=?", (clinic_id,))
     doctors_master = cursor.fetchall()
 
-    # まず既存の日報データを取得
     cursor.execute(
         "SELECT id, total_points, total_sales FROM daily_reports WHERE clinic_id=? AND date=?",
         (clinic_id, report_date)
@@ -197,7 +322,6 @@ def daily_report(year, month, day):
     total_points = result[1] if result else 0
     total_sales = result[2] if result else 0
 
-    # shiftsデータも取得
     shifts = {}
     if daily_report_id:
         cursor.execute(
@@ -216,7 +340,6 @@ def daily_report(year, month, day):
         if period not in shifts:
             shifts[period] = {'new_patients': 0, 'returning_patients': 0, 'total_patients': 0}
 
-    # procedures_recordsデータを取得
     procedures_records = {}
     if daily_report_id:
         cursor.execute(
@@ -237,7 +360,6 @@ def daily_report(year, month, day):
             if period not in procedures_records[proc_id]:
                 procedures_records[proc_id][period] = 0
 
-    # daily_doctor_shiftsデータを取得
     daily_doctors = {'AM': [], 'PM': [], '夜間': []}
     if daily_report_id:
         cursor.execute(
@@ -252,10 +374,9 @@ def daily_report(year, month, day):
         if period not in daily_doctors:
             daily_doctors[period] = []
 
-    # POSTなら保存処理
     if request.method == 'POST':
-        total_points = request.form.get('total_points', 0)
-        total_sales = request.form.get('total_sales', 0)
+        total_points = request.form.get('total_points', 0, type=int) # int型で取得
+        total_sales = request.form.get('total_sales', 0, type=int)   # int型で取得
 
         if result:
             cursor.execute(
@@ -271,9 +392,9 @@ def daily_report(year, month, day):
             daily_report_id = cursor.lastrowid
 
         for period in ['AM', 'PM']: # '夜間' は現在HTML側にinputがないため除外
-            new_patients = request.form.get(f'new_{period}', 0)
-            returning_patients = request.form.get(f'return_{period}', 0)
-            total_patients = request.form.get(f'total_{period}', 0)
+            new_patients = request.form.get(f'new_{period}', 0, type=int)
+            returning_patients = request.form.get(f'return_{period}', 0, type=int)
+            total_patients = request.form.get(f'total_{period}', 0, type=int)
 
             cursor.execute(
                 "SELECT id FROM shifts WHERE daily_report_id=? AND time_period=?",
@@ -293,7 +414,7 @@ def daily_report(year, month, day):
 
         for procedure_id, _ in procedures_master:
             for period in ['AM', 'PM']: # '夜間' は現在HTML側にinputがないため除外
-                count = request.form.get(f'procedure_{procedure_id}_{period}', 0)
+                count = request.form.get(f'procedure_{procedure_id}_{period}', 0, type=int)
 
                 cursor.execute(
                     "SELECT id FROM procedure_records WHERE daily_report_id=? AND procedure_id=? AND time_period=?",
@@ -314,6 +435,7 @@ def daily_report(year, month, day):
         cursor.execute("DELETE FROM daily_doctor_shifts WHERE daily_report_id=?", (daily_report_id,))
         for period in ['AM', 'PM']: # '夜間' は現在HTML側にselectがないため除外
             selected_doctors = request.form.getlist(f'doctors_{period}[]')
+            # 空の文字列を除外してからintに変換
             selected_doctors = [int(doc_id) for doc_id in selected_doctors if doc_id.strip() != '']
 
             for doctor_id in selected_doctors:
@@ -395,17 +517,17 @@ def daily_report(year, month, day):
         doctors=doctors_master,
         daily_doctors=daily_doctors,
         message=message,
-        date=report_date_obj, # 現在の日付オブジェクト
-        prev_day_year=prev_day_obj.year, # 前の日の年
-        prev_day_month=prev_day_obj.month, # 前の日の月
-        prev_day_day=prev_day_obj.day, # 前の日
-        next_day_year=next_day_obj.year, # 次の日の年
-        next_day_month=next_day_obj.month, # 次の日の月
-        next_day_day=next_day_obj.day # 次の日
+        date=report_date_obj,
+        prev_day_year=prev_day_obj.year,
+        prev_day_month=prev_day_obj.month,
+        prev_day_day=prev_day_obj.day,
+        next_day_year=next_day_obj.year,
+        next_day_month=next_day_obj.month,
+        next_day_day=next_day_obj.day,
+        username=username,
+        clinic_name=clinic_name
     )
 
-
-#日報データ削除 (変更なし)
 @app.route('/delete_report/<int:year>/<int:month>/<int:day>', methods=['POST'])
 @login_required
 def delete_report(year, month, day):
@@ -437,13 +559,28 @@ def delete_report(year, month, day):
 
     return redirect(url_for('index'))
 
-#医者とかの登録 (変更なし)
 @app.route('/manage_masters', methods=['GET', 'POST'])
 @login_required
 def manage_masters():
     clinic_id = session.get('clinic_id')
+    user_id = session.get('user_id')
+    username = "ゲスト"
+    clinic_name = "未所属クリニック"
+
     conn = sqlite3.connect('daily_report.db')
     cursor = conn.cursor()
+    if user_id:
+        cursor.execute("SELECT username, clinic_id FROM users WHERE id=?", (user_id,))
+        user_data = cursor.fetchone()
+        if user_data:
+            username = user_data[0]
+            current_clinic_id = user_data[1]
+            if current_clinic_id:
+                cursor.execute("SELECT name FROM clinics WHERE id=?", (current_clinic_id,))
+                clinic_data = cursor.fetchone()
+                if clinic_data:
+                    clinic_name = clinic_data[0]
+
     message = None
 
     if request.method == 'POST':
@@ -475,21 +612,20 @@ def manage_masters():
             conn.commit()
             message = "処置を削除しました。"
 
-    cursor.execute("SELECT id, name FROM doctors WHERE clinic_id=?", (clinic_id,))
-    doctors = cursor.fetchall()
-    cursor.execute("SELECT id, name FROM procedures WHERE clinic_id=?", (clinic_id,))
-    procedures = cursor.fetchall()
+    doctors = []
+    procedures = []
+    if clinic_id: # clinic_idがある場合のみマスタデータを取得
+        cursor.execute("SELECT id, name FROM doctors WHERE clinic_id=?", (clinic_id,))
+        doctors = cursor.fetchall()
+        cursor.execute("SELECT id, name FROM procedures WHERE clinic_id=?", (clinic_id,))
+        procedures = cursor.fetchall()
 
     conn.close()
-    return render_template('manage_masters.html', doctors=doctors, procedures=procedures, message=message)
+    return render_template('manage_masters.html', doctors=doctors, procedures=procedures, message=message, username=username, clinic_name=clinic_name)
 
-
-# 月次レポートのデータを取得するヘルパー関数
 def get_monthly_data(year, month, clinic_id):
-    """指定された年月の集計データを取得する"""
     conn = sqlite3.connect('daily_report.db')
     cursor = conn.cursor()
-    # SQLクエリ: total_sales, total_points, 各患者数の合計を取得
     cursor.execute("""
         SELECT
             SUM(dr.total_sales),
@@ -509,7 +645,6 @@ def get_monthly_data(year, month, clinic_id):
     """, (clinic_id, str(year), f"{month:02d}"))
     data = cursor.fetchone()
     conn.close()
-    # データがない場合は0を返す
     return {
         'total_sales': data[0] or 0,
         'total_points': data[1] or 0,
@@ -517,9 +652,8 @@ def get_monthly_data(year, month, clinic_id):
         'returning_patients': data[3] or 0,
         'total_patients': data[4] or 0
     }
-# 日次データをグラフ用に取得するヘルパー関数
+
 def get_daily_trend_data(year, month, clinic_id):
-    """グラフ用に日ごとの売上と患者数を取得する"""
     conn = sqlite3.connect('daily_report.db')
     cursor = conn.cursor()
     cursor.execute("""
@@ -540,22 +674,45 @@ def get_daily_trend_data(year, month, clinic_id):
         patients.append(row[2] or 0)
     conn.close()
     return {'days': days, 'sales': sales, 'patients': patients}
+
 @app.route('/monthly_report', methods=['GET', 'POST'])
 @login_required
 def monthly_report():
     clinic_id = session.get('clinic_id')
+    user_id = session.get('user_id')
+    username = "ゲスト"
+    clinic_name = "未所属クリニック"
+
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("SELECT username, clinic_id FROM users WHERE id=?", (user_id,))
+        user_data = cursor.fetchone()
+        if user_data:
+            username = user_data[0]
+            current_clinic_id = user_data[1]
+            if current_clinic_id:
+                cursor.execute("SELECT name FROM clinics WHERE id=?", (current_clinic_id,))
+                clinic_data = cursor.fetchone()
+                if clinic_data:
+                    clinic_name = clinic_data[0]
+    conn.close()
+
     today = date.today()
-    # フォームから年月の指定がなければ、現在の年月を使用
     year = request.form.get('year', default=today.year, type=int)
     month = request.form.get('month', default=today.month, type=int)
-    # ① 当月の集計データ
-    current_month_data = get_monthly_data(year, month, clinic_id)
-    # ② 前年同月の集計データ
-    last_year_data = get_monthly_data(year - 1, month, clinic_id)
-    # グラフ用の日次推移データ
-    trend_data = get_daily_trend_data(year, month, clinic_id)
-    # テンプレートに渡すための年リスト (過去10年分など)
+
+    current_month_data = {'total_sales': 0, 'total_points': 0, 'new_patients': 0, 'returning_patients': 0, 'total_patients': 0}
+    last_year_data = {'total_sales': 0, 'total_points': 0, 'new_patients': 0, 'returning_patients': 0, 'total_patients': 0}
+    trend_data = {'days': [], 'sales': [], 'patients': []}
+
+    if clinic_id: # clinic_idがある場合のみデータを取得
+        current_month_data = get_monthly_data(year, month, clinic_id)
+        last_year_data = get_monthly_data(year - 1, month, clinic_id)
+        trend_data = get_daily_trend_data(year, month, clinic_id)
+    
     year_options = range(today.year, today.year - 10, -1)
+    
     return render_template(
         'monthly_report.html',
         year=year,
@@ -563,7 +720,9 @@ def monthly_report():
         year_options=year_options,
         current_data=current_month_data,
         last_year_data=last_year_data,
-        trend_data=trend_data # グラフ用データを渡す
+        trend_data=trend_data,
+        username=username,
+        clinic_name=clinic_name
     )
 
 if __name__ == '__main__':

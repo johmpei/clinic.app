@@ -32,15 +32,35 @@
             font-size: 30px;   /* タイトル大きめ */
             letter-spacing: 1px;
         }
+
+.clinic-username-line {
+            display: flex; /* 横並びにする */
+            align-items: center; /* 垂直方向中央揃え */
+            gap: 10px; /* クリニック名とユーザー名の間のスペース */
+            white-space: nowrap; /* 折り返しを防ぐ */
+        }
+
+        .user-info .clinic-name { /* クリニック名のスタイル */
+            font-weight: bold; /* 太字 */
+            color: #333;
+            font-size: 1.1em;
+        }
         
+        .logout-line {
+            margin-top: 5px; /* クリニック名・ユーザー名との間隔 */
+            text-align: right; /* ログアウトリンクを右寄せ */
+        }
+
         .logout-link {
-            font-size: 18px;
+            font-size: 0.9em; /* 少し小さめに調整 */
         }
         .logout-link a {
             color: #555;
             text-decoration: none;
+            transition: color 0.18s;
         }
         .logout-link a:hover {
+            color: #007bff;
             text-decoration: underline;
         }
 
@@ -148,9 +168,18 @@
 
     <header class="header-area">
         <div class="header-top">
-            <h1>{{ year }}年{{ month }}月 日報カレンダー</h1>
-            <div class="logout-link"><a href="{{ url_for('logout') }}">ログアウト</a></div>
+            <h1 class="system-title">日報管理システム</h1>
+            <div class="user-info">
+                <div class="clinic-username-line">
+                    <span class="clinic-name">{{ clinic_name }}</span>
+                    <span>{{ username }} さん</span>
+                </div>
+                <div class="logout-line">
+                    <span class="logout-link"><a href="{{ url_for('logout') }}">ログアウト</a></span>
+                </div>
+            </div>
         </div>
+
         <div class="button-group">
             <a href="{{ url_for('index', year=prev_year, month=prev_month) }}" class="button">前の月</a>
             <a href="{{ url_for('index') }}" class="button">今月</a>

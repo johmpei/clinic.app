@@ -223,7 +223,7 @@
                     <th>新患</th>
                     <th>再診</th>
                     <th>合計</th>
-                    <th>再診率</th>
+                    <th>初診率</th>
                 </tr>
                 {% for period in ['AM', 'PM'] %}
                 <tr>
@@ -231,7 +231,7 @@
                     <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
                     <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
                     <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}" id="total_{{ period }}" readonly></td>
-                    <td><span id="revisit_rate_{{ period }}">0.00%</span></td>
+                    <td><span id="revisit_rate_{{ period }}">0%</span></td> {# IDはそのままに、表示を「初診率」に変更 #}
                 </tr>
                 {% endfor %}
             </table>
@@ -258,7 +258,8 @@
                     </td>
                     {% endfor %}
                     <td>
-                        </td>
+                        {# 夜間は現在inputがないため空セル #}
+                    </td>
                     <td>
                         <input type="number"
                             name="procedure_total_{{ procedure[0] }}"
@@ -292,20 +293,20 @@
     </div>
 
 <script>
-    // 患者数の合計・再診率
+    // 患者数の合計・初診率
     function calculateTotalPatients(period) {
         const newPatients = parseInt(document.querySelector(`input[name="new_${period}"]`).value) || 0;
         const returningPatients = parseInt(document.querySelector(`input[name="return_${period}"]`).value) || 0;
         const totalPatientsField = document.getElementById(`total_${period}`);
-        const revisitRateField = document.getElementById(`revisit_rate_${period}`);
+        const newPatientRateField = document.getElementById(`revisit_rate_${period}`); // IDはrevisit_rateのままにしておく
         const totalPatients = newPatients + returningPatients;
         totalPatientsField.value = totalPatients;
-        // 再診率
+        // 初診率
         if (totalPatients > 0) {
-            const revisitRate = (returningPatients / totalPatients) * 100;
-            revisitRateField.textContent = `${revisitRate.toFixed(2)}%`;
+            const newPatientRate = (newPatients / totalPatients) * 100;
+            newPatientRateField.textContent = `${newPatientRate.toFixed(0)}%`; // 整数表示
         } else {
-            revisitRateField.textContent = '0.00%';
+            newPatientRateField.textContent = '0%'; // 整数表示
         }
     }
 
@@ -326,10 +327,19 @@
     function addDoctorSelectIfLast(selectElement, period) {
         const container = document.getElementById(`doctors_container_${period}`);
         const selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`);
-        const lastSelect = selects[selects.length - 1];
 
-        // 最後のselect要素が選択され、かつまだ空のselect要素がなければ追加
-        if (selectElement === lastSelect && selectElement.value !== "") {
+        // 選択されたselectの次に空のselectがないか確認し、なければ追加
+        let foundEmptyNext = false;
+        for (let i = 0; i < selects.length; i++) {
+            if (selects[i] === selectElement) {
+                if (i + 1 < selects.length && selects[i + 1].value === "") {
+                    foundEmptyNext = true;
+                }
+                break;
+            }
+        }
+
+        if (selectElement.value !== "" && !foundEmptyNext) {
             const newSelect = document.createElement('select');
             newSelect.name = `doctors_${period}[]`;
             newSelect.onchange = function() { addDoctorSelectIfLast(this, period); };
@@ -347,20 +357,21 @@
             {% endfor %}
             container.appendChild(newSelect);
         }
+        
         // 未選択のドクターセレクトを削除（ただし、最低1つは残す）
-        if (selects.length > 1) {
-            selects.forEach((select, index) => {
-                // 選択肢が空で、かつ自分自身が最後の要素ではない場合
-                if (select.value === "" && index < selects.length - 1) {
-                    select.remove();
-                }
-            });
+        // 現在選択されているselectの次にある、値が空のselectを全て削除する
+        let nextElement = selectElement.nextElementSibling;
+        while (nextElement && nextElement.tagName === 'SELECT' && nextElement.value === "") {
+            const tempNext = nextElement.nextElementSibling;
+            nextElement.remove();
+            nextElement = tempNext;
         }
     }
 
+
     // ページロード時に計算と動的要素の初期化を実行
     document.addEventListener('DOMContentLoaded', (event) => {
-        // 患者数と再診率の初期計算
+        // 患者数と初診率の初期計算
         ['AM', 'PM'].forEach(period => {
             calculateTotalPatients(period);
         });
@@ -370,23 +381,20 @@
             calculateProcedureTotal('{{ procedure[0] }}');
         {% endfor %}
 
-        // ドクター選択の初期化
+        // ドクター選択の初期化 - 各時間帯で最低1つの空のselectがあることを保証
         ['AM', 'PM'].forEach(period => {
             const container = document.getElementById(`doctors_container_${period}`);
-            const selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`);
-            // 既存の選択肢が全て埋まっている場合のみ、新しい空のselectを追加
-            let allFilled = true;
-            if (selects.length > 0) {
-                selects.forEach(s => {
-                    if (s.value === "") {
-                        allFilled = false;
-                    }
-                });
-            } else {
-                allFilled = false; // 最初からselectがない場合
-            }
+            let selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`);
 
-            if (allFilled || selects.length === 0) { // 全て埋まっているか、まだ一つもない場合
+            // 既存のselectがない、または全てのselectが選択されている場合に新しい空のselectを追加
+            let hasEmptySelect = false;
+            selects.forEach(s => {
+                if (s.value === "") {
+                    hasEmptySelect = true;
+                }
+            });
+
+            if (selects.length === 0 || !hasEmptySelect) {
                 const newSelect = document.createElement('select');
                 newSelect.name = `doctors_${period}[]`;
                 newSelect.onchange = function() { addDoctorSelectIfLast(this, period); };
@@ -404,11 +412,18 @@
                 {% endfor %}
                 container.appendChild(newSelect);
             }
-             // 初期ロード時に不要な空のselectを削除
+
+            // 初期ロード時に不要な空のselectを削除（ただし、最低1つは残す）
+            // 選択されている要素の直後に空の要素がある場合は残し、それ以外の空の要素は削除
+            selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`); // 再取得
             if (selects.length > 1) {
                 selects.forEach((select, index) => {
                     if (select.value === "" && index < selects.length - 1) {
-                        select.remove();
+                        // 最後の要素でない空のselectは削除
+                        let nextSelect = selects[index + 1];
+                        if (nextSelect && nextSelect.value !== "") { // 次のselectが選択されているなら削除
+                            select.remove();
+                        }
                     }
                 });
             }
