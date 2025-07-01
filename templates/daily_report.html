@@ -26,7 +26,7 @@
             font-weight: 400;
             letter-spacing: 1px;
             color: #333;
-            text-align: center; /* 中央寄せ */
+            text-align: center;
         }
         .date-navigation {
             display: flex;
@@ -71,11 +71,18 @@
             padding: 10px 10px;
             text-align: left;
             font-size: 1.06em;
+            vertical-align: top; /* 上揃えを追加 */
         }
         th {
             background: #f5f5f5;
             color: #444;
             font-weight: normal;
+        }
+        /* ドクター選択欄を横並びにするためのスタイル */
+        td.doctors-cell {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px; /* プルダウン間の隙間 */
         }
         input[type="number"], select {
             font-size: 1em;
@@ -85,7 +92,6 @@
             background: #fff;
             width: 90px;
             box-sizing: border-box;
-            margin-right: 3px;
         }
         select { width: 160px; }
         input[readonly] { background: #f3f3f3; color: #888; }
@@ -104,8 +110,8 @@
             margin-top: 30px;
             display: flex;
             gap: 18px;
-            flex-wrap: wrap; /* ボタンが並びきらない場合に折り返す */
-            justify-content: flex-start; /* 左寄せ */
+            flex-wrap: wrap;
+            justify-content: flex-start;
         }
         button, .btn-link {
             display: inline-block;
@@ -160,7 +166,6 @@
             text-decoration: underline;
             color: #003a80;
         }
-        /* スクロールバーもやや細く */
         ::-webkit-scrollbar {
             width: 10px;
             background: #f1f1f1;
@@ -189,13 +194,13 @@
                     <th>時間帯</th>
                     <th>担当ドクター（複数選択OK）</th>
                 </tr>
-                {% for period in ['AM', 'PM'] %} {# '夜間' は現在HTML側にselectがないため除外 #}
+                {% for period in ['AM', 'PM'] %}
                 <tr>
                     <td>{{ period }}</td>
-                    <td id="doctors_container_{{ period }}">
+                    <td id="doctors_container_{{ period }}" class="doctors-cell">
                         {% if daily_doctors[period] %}
                             {% for doctor_id in daily_doctors[period] %}
-                                <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
+                                <select name="doctors_{{ period }}[]" onchange="handleDoctorSelectChange(this, '{{ period }}')">
                                     <option value="">-- 選択してください --</option>
                                     {% for doctor in doctors %}
                                         <option value="{{ doctor[0] }}" {% if doctor[0] == doctor_id %}selected{% endif %}>
@@ -205,13 +210,7 @@
                                 </select>
                             {% endfor %}
                         {% endif %}
-                        <select name="doctors_{{ period }}[]" onchange="addDoctorSelectIfLast(this, '{{ period }}')">
-                            <option value="">-- 選択してください --</option>
-                            {% for doctor in doctors %}
-                                <option value="{{ doctor[0] }}">{{ doctor[1] }}</option>
-                            {% endfor %}
-                        </select>
-                    </td>
+                        </td>
                 </tr>
                 {% endfor %}
             </table>
@@ -228,10 +227,10 @@
                 {% for period in ['AM', 'PM'] %}
                 <tr>
                     <td>{{ period }}</td>
-                    <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
-                    <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}" oninput="calculateTotalPatients('{{ period }}')"></td>
+                    <td><input type="number" name="new_{{ period }}" min="0" value="{{ shifts[period].new_patients if shifts[period] else 0 }}" oninput="calculatePatientStats('{{ period }}')"></td>
+                    <td><input type="number" name="return_{{ period }}" min="0" value="{{ shifts[period].returning_patients if shifts[period] else 0 }}" oninput="calculatePatientStats('{{ period }}')"></td>
                     <td><input type="number" name="total_{{ period }}" min="0" value="{{ shifts[period].total_patients if shifts[period] else 0 }}" id="total_{{ period }}" readonly></td>
-                    <td><span id="revisit_rate_{{ period }}">0%</span></td> {# IDはそのままに、表示を「初診率」に変更 #}
+                    <td><span id="new_patient_rate_{{ period }}">0%</span></td>
                 </tr>
                 {% endfor %}
             </table>
@@ -242,7 +241,6 @@
                     <th>処置名</th>
                     <th>AM</th>
                     <th>PM</th>
-                    <th>夜間</th>
                     <th>合計</th>
                 </tr>
                 {% for procedure in procedures %}
@@ -251,22 +249,19 @@
                     {% for period in ['AM', 'PM'] %}
                     <td>
                         <input type="number"
-                            name="procedure_{{ procedure[0] }}_{{ period }}"
-                            min="0"
-                            value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and period in procedures_records[procedure[0]] else 0 }}"
-                            oninput="calculateProcedureTotal('{{ procedure[0] }}')">
+                               name="procedure_{{ procedure[0] }}_{{ period }}"
+                               min="0"
+                               value="{{ procedures_records[procedure[0]][period] if procedures_records[procedure[0]] and period in procedures_records[procedure[0]] else 0 }}"
+                               oninput="calculateProcedureTotal('{{ procedure[0] }}')">
                     </td>
                     {% endfor %}
                     <td>
-                        {# 夜間は現在inputがないため空セル #}
-                    </td>
-                    <td>
                         <input type="number"
-                            name="procedure_total_{{ procedure[0] }}"
-                            min="0"
-                            value="0"
-                            id="procedure_total_{{ procedure[0] }}"
-                            readonly>
+                               name="procedure_total_{{ procedure[0] }}"
+                               min="0"
+                               value="0"
+                               id="procedure_total_{{ procedure[0] }}"
+                               readonly>
                     </td>
                 </tr>
                 {% endfor %}
@@ -287,34 +282,69 @@
         </form>
 
         <div class="bottom-link">
-            {# 日報表示時の年月に戻る #}
             <a href="{{ url_for('index', year=year, month=month) }}">← カレンダーに戻る</a>
         </div>
     </div>
 
 <script>
-    // 患者数の合計・初診率
-    function calculateTotalPatients(period) {
-        const newPatients = parseInt(document.querySelector(`input[name="new_${period}"]`).value) || 0;
-        const returningPatients = parseInt(document.querySelector(`input[name="return_${period}"]`).value) || 0;
-        const totalPatientsField = document.getElementById(`total_${period}`);
-        const newPatientRateField = document.getElementById(`revisit_rate_${period}`); // IDはrevisit_rateのままにしておく
-        const totalPatients = newPatients + returningPatients;
-        totalPatientsField.value = totalPatients;
-        // 初診率
-        if (totalPatients > 0) {
-            const newPatientRate = (newPatients / totalPatients) * 100;
-            newPatientRateField.textContent = `${newPatientRate.toFixed(0)}%`; // 整数表示
+    // --- ユーティリティ関数 ---
+    const DOCTOR_OPTIONS = [
+        { value: "", text: "-- 選択してください --"},
+        {% for doctor in doctors %}
+        { value: "{{ doctor[0] }}", text: "{{ doctor[1] }}" },
+        {% endfor %}
+    ];
+
+    function createDoctorSelect(period) {
+        const select = document.createElement('select');
+        select.name = `doctors_${period}[]`;
+        select.onchange = () => handleDoctorSelectChange(select, period);
+        DOCTOR_OPTIONS.forEach(optData => {
+            const option = document.createElement('option');
+            option.value = optData.value;
+            option.textContent = optData.text;
+            select.appendChild(option);
+        });
+        return select;
+    }
+
+    // --- ドクター選択の管理 ---
+    function handleDoctorSelectChange(selectElement, period) {
+        const container = document.getElementById(`doctors_container_${period}`);
+        if (selectElement.value === "") {
+            // 値が空になった場合、そのセレクトを削除（ただしコンテナに1つしか無ければ残す）
+            if (container.children.length > 1) {
+                container.removeChild(selectElement);
+            }
         } else {
-            newPatientRateField.textContent = '0%'; // 整数表示
+            // 値が選択された場合、最後のセレクトか確認し、そうなら新しい空のセレクトを追加
+            if (selectElement === container.lastElementChild) {
+                container.appendChild(createDoctorSelect(period));
+            }
         }
     }
 
-    // 処置の合計
+    // --- 患者数の合計・初診率 ---
+    function calculatePatientStats(period) {
+        const newPatients = parseInt(document.querySelector(`input[name="new_${period}"]`).value) || 0;
+        const returningPatients = parseInt(document.querySelector(`input[name="return_${period}"]`).value) || 0;
+        const totalPatients = newPatients + returningPatients;
+        
+        document.getElementById(`total_${period}`).value = totalPatients;
+
+        const newPatientRateField = document.getElementById(`new_patient_rate_${period}`);
+        if (totalPatients > 0) {
+            const newPatientRate = (newPatients / totalPatients) * 100;
+            newPatientRateField.textContent = `${newPatientRate.toFixed(0)}%`;
+        } else {
+            newPatientRateField.textContent = '0%';
+        }
+    }
+
+    // --- 処置の合計 ---
     function calculateProcedureTotal(procedureId) {
         let total = 0;
-        const periods = ['AM', 'PM']; // 夜間は現在inputがないため除外
-        periods.forEach(period => {
+        ['AM', 'PM'].forEach(period => {
             const inputElement = document.querySelector(`input[name="procedure_${procedureId}_${period}"]`);
             if (inputElement) {
                 total += parseInt(inputElement.value) || 0;
@@ -323,111 +353,32 @@
         document.getElementById(`procedure_total_${procedureId}`).value = total;
     }
 
-    // ドクター選択の動的追加
-    function addDoctorSelectIfLast(selectElement, period) {
-        const container = document.getElementById(`doctors_container_${period}`);
-        const selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`);
-
-        // 選択されたselectの次に空のselectがないか確認し、なければ追加
-        let foundEmptyNext = false;
-        for (let i = 0; i < selects.length; i++) {
-            if (selects[i] === selectElement) {
-                if (i + 1 < selects.length && selects[i + 1].value === "") {
-                    foundEmptyNext = true;
-                }
-                break;
-            }
-        }
-
-        if (selectElement.value !== "" && !foundEmptyNext) {
-            const newSelect = document.createElement('select');
-            newSelect.name = `doctors_${period}[]`;
-            newSelect.onchange = function() { addDoctorSelectIfLast(this, period); };
-
-            const defaultOption = document.createElement('option');
-            defaultOption.value = "";
-            defaultOption.textContent = "-- 選択してください --";
-            newSelect.appendChild(defaultOption);
-
-            {% for doctor in doctors %}
-                const option = document.createElement('option');
-                option.value = "{{ doctor[0] }}";
-                option.textContent = "{{ doctor[1] }}";
-                newSelect.appendChild(option);
-            {% endfor %}
-            container.appendChild(newSelect);
-        }
-        
-        // 未選択のドクターセレクトを削除（ただし、最低1つは残す）
-        // 現在選択されているselectの次にある、値が空のselectを全て削除する
-        let nextElement = selectElement.nextElementSibling;
-        while (nextElement && nextElement.tagName === 'SELECT' && nextElement.value === "") {
-            const tempNext = nextElement.nextElementSibling;
-            nextElement.remove();
-            nextElement = tempNext;
-        }
-    }
-
-
-    // ページロード時に計算と動的要素の初期化を実行
-    document.addEventListener('DOMContentLoaded', (event) => {
-        // 患者数と初診率の初期計算
+    // --- ページ読み込み時の初期化処理 ---
+    document.addEventListener('DOMContentLoaded', () => {
+        // 各時間帯の処理
         ['AM', 'PM'].forEach(period => {
-            calculateTotalPatients(period);
+            // 1. 患者数と初診率の初期計算
+            calculatePatientStats(period);
+
+            // 2. ドクター選択欄の初期化
+            const container = document.getElementById(`doctors_container_${period}`);
+            let hasEmptySelect = false;
+            // 既存のセレクトの中に空のものがあるかチェック
+            container.querySelectorAll('select').forEach(s => {
+                if (s.value === "") {
+                    hasEmptySelect = true;
+                }
+            });
+            // 空のセレクトがなければ追加する
+            if (!hasEmptySelect) {
+                container.appendChild(createDoctorSelect(period));
+            }
         });
 
         // 処置合計の初期計算
         {% for procedure in procedures %}
             calculateProcedureTotal('{{ procedure[0] }}');
         {% endfor %}
-
-        // ドクター選択の初期化 - 各時間帯で最低1つの空のselectがあることを保証
-        ['AM', 'PM'].forEach(period => {
-            const container = document.getElementById(`doctors_container_${period}`);
-            let selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`);
-
-            // 既存のselectがない、または全てのselectが選択されている場合に新しい空のselectを追加
-            let hasEmptySelect = false;
-            selects.forEach(s => {
-                if (s.value === "") {
-                    hasEmptySelect = true;
-                }
-            });
-
-            if (selects.length === 0 || !hasEmptySelect) {
-                const newSelect = document.createElement('select');
-                newSelect.name = `doctors_${period}[]`;
-                newSelect.onchange = function() { addDoctorSelectIfLast(this, period); };
-
-                const defaultOption = document.createElement('option');
-                defaultOption.value = "";
-                defaultOption.textContent = "-- 選択してください --";
-                newSelect.appendChild(defaultOption);
-
-                {% for doctor in doctors %}
-                    const option = document.createElement('option');
-                    option.value = "{{ doctor[0] }}";
-                    option.textContent = "{{ doctor[1] }}";
-                    newSelect.appendChild(option);
-                {% endfor %}
-                container.appendChild(newSelect);
-            }
-
-            // 初期ロード時に不要な空のselectを削除（ただし、最低1つは残す）
-            // 選択されている要素の直後に空の要素がある場合は残し、それ以外の空の要素は削除
-            selects = container.querySelectorAll(`select[name="doctors_${period}[]"]`); // 再取得
-            if (selects.length > 1) {
-                selects.forEach((select, index) => {
-                    if (select.value === "" && index < selects.length - 1) {
-                        // 最後の要素でない空のselectは削除
-                        let nextSelect = selects[index + 1];
-                        if (nextSelect && nextSelect.value !== "") { // 次のselectが選択されているなら削除
-                            select.remove();
-                        }
-                    }
-                });
-            }
-        });
     });
 </script>
 </body>

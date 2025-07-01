@@ -322,6 +322,9 @@ def daily_report(year, month, day):
     total_points = result[1] if result else 0
     total_sales = result[2] if result else 0
 
+
+
+
     shifts = {}
     if daily_report_id:
         cursor.execute(
