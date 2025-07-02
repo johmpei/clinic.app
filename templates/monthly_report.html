@@ -287,55 +287,55 @@
         </tbody>
     </table>
 
-    <h2>月次保険点数 積み上げ比較</h2>
+    <h2>月次比較グラフ</h2>
     <div class="chart-container">
-        <h3>昨年同月保険点数との比較</h3>
+        <h3>保険点数 積み上げ比較 (vs 前年同月)</h3>
         <canvas id="cumulativePointsChart"></canvas>
     </div>
+    <div class="chart-container">
+        <h3>患者数 積み上げ比較 (vs 前年同月)</h3>
+        <canvas id="cumulativePatientsChart"></canvas>
+    </div>
+
     <h2>日次推移グラフ</h2>
     <div class="chart-container">
-        <h3>売上推移</h3>
-        <canvas id="salesChart"></canvas>
+        <h3>保険点数推移 (vs 月間平均)</h3>
+        <canvas id="pointsTrendChart"></canvas>
     </div>
-    <div class="chart-container">
-        <h3>患者数推移</h3>
-        <canvas id="patientsChart"></canvas>
-    </div>
+
     <a href="{{ url_for('index') }}" class="back-link">← カレンダーに戻る</a>
 </div>
 <script>
     // Flaskから渡されたデータをJavaScript変数に変換
     const trendData = {{ trend_data | tojson }};
-    const cumulativeChartData = {{ cumulative_chart_data | tojson }};
+    const cumulativePointsData = {{ cumulative_points_data | tojson }};
+    const cumulativePatientsData = {{ cumulative_patients_data | tojson }};
 
-    // ▼▼▼【ここから修正】▼▼▼
     // 1. 保険点数積み上げ比較グラフ
     const cumulativePointsCtx = document.getElementById('cumulativePointsChart').getContext('2d');
     const cumulativePointsChart = new Chart(cumulativePointsCtx, {
-        type: 'bar', // 基本は棒グラフ
+        type: 'bar',
         data: {
-            labels: cumulativeChartData.days,
+            labels: cumulativePointsData.days,
             datasets: [
                 {
-                    // 今年の累積保険点数（棒グラフ）
                     label: `{{ year }}年{{ month }}月 累積保険点数`,
-                    data: cumulativeChartData.cumulative_points,
+                    data: cumulativePointsData.cumulative_points,
                     backgroundColor: 'rgba(54, 162, 235, 0.6)',
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1,
-                    order: 2 // 棒グラフを奥に表示
+                    order: 2
                 },
                 {
-                    // 昨年同月の総保険点数（破線のゴールライン）
-                    type: 'line', // このデータセットだけ線グラフ
+                    type: 'line',
                     label: `{{ year - 1 }}年{{ month }}月 総保険点数 (目標ライン)`,
-                    data: cumulativeChartData.days.map(() => cumulativeChartData.last_year_total_points),
+                    data: cumulativePointsData.days.map(() => cumulativePointsData.last_year_total_points),
                     borderColor: 'rgba(255, 99, 132, 1)',
                     borderWidth: 2,
-                    borderDash: [5, 5], // 破線にする
-                    pointRadius: 0, // データ点を非表示に
+                    borderDash: [5, 5],
+                    pointRadius: 0,
                     fill: false,
-                    order: 1 // 線グラフを手前に表示
+                    order: 1
                 }
             ]
         },
@@ -344,7 +344,6 @@
                 y: {
                     beginAtZero: true,
                     ticks: {
-                        // 目盛りを「〇〇 点」の形式にする
                         callback: function(value, index, values) {
                             return new Intl.NumberFormat('ja-JP').format(value) + ' 点';
                         }
@@ -353,42 +352,85 @@
             }
         }
     });
-    // ▲▲▲【ここまで修正】▲▲▲
 
-    // 2. 売上推移グラフ (既存のグラフ)
-    const salesCtx = document.getElementById('salesChart').getContext('2d');
-    const salesChart = new Chart(salesCtx, {
-        type: 'line',
-        data: {
-            labels: trendData.days,
-            datasets: [{
-                label: '日次売上 (円)',
-                data: trendData.sales,
-                borderColor: 'rgba(75, 192, 192, 1)',
-                backgroundColor: 'rgba(75, 192, 192, 0.2)',
-                fill: true,
-                tension: 0.1
-            }]
-        }
-    });
-
-    // 3. 患者数推移グラフ (既存のグラフ)
-    const patientsCtx = document.getElementById('patientsChart').getContext('2d');
-    const patientsChart = new Chart(patientsCtx, {
+    // 2. 患者数積み上げ比較グラフ
+    const cumulativePatientsCtx = document.getElementById('cumulativePatientsChart').getContext('2d');
+    const cumulativePatientsChart = new Chart(cumulativePatientsCtx, {
         type: 'bar',
         data: {
-            labels: trendData.days,
-            datasets: [{
-                label: '日次患者数 (人)',
-                data: trendData.patients,
-                borderColor: 'rgba(255, 159, 64, 1)',
-                backgroundColor: 'rgba(255, 159, 64, 0.5)',
-            }]
+            labels: cumulativePatientsData.days,
+            datasets: [
+                {
+                    label: `{{ year }}年{{ month }}月 累積患者数`,
+                    data: cumulativePatientsData.cumulative_patients,
+                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1,
+                    order: 2
+                },
+                {
+                    type: 'line',
+                    label: `{{ year - 1 }}年{{ month }}月 総患者数 (目標ライン)`,
+                    data: cumulativePatientsData.days.map(() => cumulativePatientsData.last_year_total_patients),
+                    borderColor: 'rgba(255, 159, 64, 1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    order: 1
+                }
+            ]
         },
         options: {
             scales: {
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value, index, values) {
+                            return value + ' 人';
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    // 3. 保険点数推移グラフ
+    const pointsTrendCtx = document.getElementById('pointsTrendChart').getContext('2d');
+    const pointsTrendChart = new Chart(pointsTrendCtx, {
+        type: 'bar',
+        data: {
+            labels: trendData.days,
+            datasets: [
+                {
+                    label: '日次保険点数',
+                    data: trendData.points,
+                    backgroundColor: 'rgba(255, 206, 86, 0.6)',
+                    borderColor: 'rgba(255, 206, 86, 1)',
+                    order: 2
+                },
+                {
+                    type: 'line',
+                    label: '月間平均保険点数',
+                    data: trendData.days.map(() => trendData.average_points),
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    order: 1
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                     ticks: {
+                        callback: function(value, index, values) {
+                            return new Intl.NumberFormat('ja-JP').format(value) + ' 点';
+                        }
+                    }
                 }
             }
         }

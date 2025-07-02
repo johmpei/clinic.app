@@ -598,26 +598,43 @@ def get_monthly_data(year, month, clinic_id):
     }
 
 def get_daily_trend_data(year, month, clinic_id):
+    """日次の売上、患者数、保険点数、および月間平均保険点数を取得する"""
     conn = sqlite3.connect('daily_report.db')
     cursor = conn.cursor()
     cursor.execute("""
         SELECT
             CAST(STRFTIME('%d', dr.date) AS INTEGER) as day,
             dr.total_sales,
+            dr.total_points,
             (SELECT SUM(total_patients) FROM shifts s WHERE s.daily_report_id = dr.id) as daily_total_patients
         FROM daily_reports dr
         WHERE dr.clinic_id = ? AND STRFTIME('%Y', dr.date) = ? AND STRFTIME('%m', dr.date) = ?
         ORDER BY day
     """, (clinic_id, str(year), f"{month:02d}"))
+    
     days = []
     sales = []
+    points = []
     patients = []
+    
     for row in cursor.fetchall():
         days.append(row[0])
         sales.append(row[1] or 0)
-        patients.append(row[2] or 0)
+        points.append(row[2] or 0)
+        patients.append(row[3] or 0)
+    
     conn.close()
-    return {'days': days, 'sales': sales, 'patients': patients}
+    
+    # 月間平均保険点数を計算
+    average_points = sum(points) / len(points) if points else 0
+    
+    return {
+        'days': days, 
+        'sales': sales, 
+        'points': points, 
+        'patients': patients, 
+        'average_points': average_points
+    }
 
 def calculate_business_days(year, month):
     """営業日数を計算する（平日:1, 土曜:0.5, 日祝:0）"""
@@ -676,7 +693,6 @@ def get_monthly_procedure_counts(year, month, clinic_id):
     conn.close()
     return counts
 
-# ▼▼▼【ここから修正】▼▼▼
 def get_cumulative_daily_points_data(year, month, clinic_id):
     """月間の日次累積「保険点数」と、前年同月の総「保険点数」を取得する"""
     if not clinic_id:
@@ -689,11 +705,13 @@ def get_cumulative_daily_points_data(year, month, clinic_id):
     _, num_days = calendar.monthrange(year, month)
     daily_points = {day: 0 for day in range(1, num_days + 1)}
     
+    # ▼▼▼【ここから修正】▼▼▼
     cursor.execute("""
         SELECT CAST(STRFTIME('%d', date) AS INTEGER) as day, total_points
         FROM daily_reports
         WHERE clinic_id = ? AND STRFTIME('%Y', date) = ? AND STRFTIME('%m', date) = ?
     """, (clinic_id, str(year), f"{month:02d}"))
+    # ▲▲▲【ここまで修正】▲▲▲
     
     for row in cursor.fetchall():
         daily_points[row[0]] = row[1] if row[1] else 0
@@ -706,11 +724,13 @@ def get_cumulative_daily_points_data(year, month, clinic_id):
         cumulative_points.append(current_total)
 
     # 前年同月の総「保険点数」を取得
+    # ▼▼▼【ここから修正】▼▼▼
     cursor.execute("""
         SELECT SUM(total_points)
         FROM daily_reports
         WHERE clinic_id = ? AND STRFTIME('%Y', date) = ? AND STRFTIME('%m', date) = ?
     """, (clinic_id, str(year - 1), f"{month:02d}"))
+    # ▲▲▲【ここまで修正】▲▲▲
     last_year_total_points = cursor.fetchone()[0] or 0
     
     conn.close()
@@ -720,7 +740,50 @@ def get_cumulative_daily_points_data(year, month, clinic_id):
         'cumulative_points': cumulative_points,
         'last_year_total_points': last_year_total_points
     }
-# ▲▲▲【ここまで修正】▲▲▲
+
+def get_cumulative_daily_patients_data(year, month, clinic_id):
+    """月間の日次累積「患者数」と、前年同月の総「患者数」を取得する"""
+    if not clinic_id:
+        return {'days': [], 'cumulative_patients': [], 'last_year_total_patients': 0}
+
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+
+    _, num_days = calendar.monthrange(year, month)
+    daily_patients = {day: 0 for day in range(1, num_days + 1)}
+
+    cursor.execute("""
+        SELECT 
+            CAST(STRFTIME('%d', dr.date) AS INTEGER) as day, 
+            (SELECT SUM(s.total_patients) FROM shifts s WHERE s.daily_report_id = dr.id) as daily_total
+        FROM daily_reports dr
+        WHERE dr.clinic_id = ? AND STRFTIME('%Y', dr.date) = ? AND STRFTIME('%m', dr.date) = ?
+    """, (clinic_id, str(year), f"{month:02d}"))
+
+    for row in cursor.fetchall():
+        daily_patients[row[0]] = row[1] if row[1] else 0
+
+    cumulative_patients = []
+    current_total = 0
+    for day in range(1, num_days + 1):
+        current_total += daily_patients[day]
+        cumulative_patients.append(current_total)
+
+    cursor.execute("""
+        SELECT SUM(s.total_patients)
+        FROM shifts s
+        JOIN daily_reports dr ON s.daily_report_id = dr.id
+        WHERE dr.clinic_id = ? AND STRFTIME('%Y', dr.date) = ? AND STRFTIME('%m', dr.date) = ?
+    """, (clinic_id, str(year - 1), f"{month:02d}"))
+    last_year_total_patients = cursor.fetchone()[0] or 0
+    
+    conn.close()
+
+    return {
+        'days': list(range(1, num_days + 1)),
+        'cumulative_patients': cumulative_patients,
+        'last_year_total_patients': last_year_total_patients
+    }
 
 def get_summary_data(target_year, target_month, clinic_id):
     """サマリーデータをまとめて取得する内部関数"""
@@ -795,11 +858,8 @@ def monthly_report():
     current_summary = get_summary_data(year, month, clinic_id)
     last_year_summary = get_summary_data(year - 1, month, clinic_id)
     trend_data = get_daily_trend_data(year, month, clinic_id)
-    
-    # ▼▼▼【ここから修正】▼▼▼
-    # 累積「保険点数」グラフ用のデータを取得
-    cumulative_chart_data = get_cumulative_daily_points_data(year, month, clinic_id)
-    # ▲▲▲【ここまで修正】▲▲▲
+    cumulative_points_data = get_cumulative_daily_points_data(year, month, clinic_id)
+    cumulative_patients_data = get_cumulative_daily_patients_data(year, month, clinic_id)
 
     # 4. テンプレートに渡すその他の変数を準備
     year_options = range(today.year, today.year - 10, -1)
@@ -813,7 +873,8 @@ def monthly_report():
         current_data=current_summary,
         last_year_data=last_year_summary,
         trend_data=trend_data,
-        cumulative_chart_data=cumulative_chart_data,
+        cumulative_points_data=cumulative_points_data, 
+        cumulative_patients_data=cumulative_patients_data, 
         username=username,
         clinic_name=clinic_name
     )
