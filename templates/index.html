@@ -33,7 +33,7 @@
             letter-spacing: 1px;
         }
 
-.clinic-username-line {
+        .clinic-username-line {
             display: flex; /* 横並びにする */
             align-items: center; /* 垂直方向中央揃え */
             gap: 10px; /* クリニック名とユーザー名の間のスペース */
@@ -207,7 +207,7 @@
                             <a href="{{ url_for('daily_report', year=year, month=month, day=day_num) }}">
                                 <div class="day-number">{{ day_num }}</div>
                                 <div class="summary-info">
-                                    {% if daily_summaries[day_num] %}
+                                    {% if day_num in daily_summaries %}
                                         <div>
                                             患者数: {{ daily_summaries[day_num].total_patients }}人<br>
                                             {{ daily_summaries[day_num].total_points }}点
@@ -224,7 +224,6 @@
             {% endfor %}
         </table>
 
-        <!-- 下部に2つのボタン配置 -->
         <div class="button-group bottom-buttons">
             <a href="{{ url_for('monthly_report') }}" class="button button-primary">月報・分析ページへ</a>
             <a href="{{ url_for('manage_masters') }}" class="button">マスタ管理</a>
