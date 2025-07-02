@@ -6,126 +6,29 @@
     <title>月報・分析 - {{ year }}年{{ month }}月</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        body {
-            font-family: 'Yu Gothic', '游ゴシック', 'Hiragino Kaku Gothic ProN', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #f9f9f9;
-            color: #333;
-            font-size: 18px;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            max-width: 980px;
-            margin: 44px auto 0 auto;
-            background: #fff;
-            border-radius: 14px;
-            box-shadow: 0 4px 20px rgba(30, 30, 60, 0.08);
-            padding: 48px 42px 38px 42px;
-        }
-        h1 {
-            text-align: center;
-            color: #222;
-            font-size: 2.15em;
-            font-weight: 400;
-            margin-bottom: 30px;
-            letter-spacing: 1px;
-        }
-        h2 {
-            text-align: left;
-            font-size: 1.16em;
-            color: #007bff;
-            font-weight: 500;
-            border-left: 4px solid #007bff;
-            padding-left: 13px;
-            margin: 38px 0 16px 0;
-            background: linear-gradient(90deg, #eaf3ff 0 80%, transparent 100%);
-        }
-        h3 {
-            font-size: 1.05em;
-            color: #555;
-            font-weight: 500;
-            margin-bottom: 12px;
-        }
-        form {
-            text-align: center;
-            margin-bottom: 32px;
-        }
-        select {
-            font-size: 1em;
-            padding: 10px 14px;
-            border: 1px solid #bbb;
-            border-radius: 5px;
-            margin: 0 4px 0 0;
-            background: #fafbfc;
-        }
-        button[type="submit"] {
-            background-color: #007bff;
-            color: #fff;
-            font-size: 1.05em;
-            padding: 10px 28px;
-            border: none;
-            border-radius: 7px;
-            cursor: pointer;
-            font-weight: 600;
-            margin-left: 7px;
-            transition: background 0.22s;
-        }
-        button[type="submit"]:hover {
-            background: #0056b3;
-        }
-        table {
-            border-collapse: collapse;
-            width: 100%;
-            margin-bottom: 36px;
-            background: #fcfcfc;
-            border-radius: 9px;
-            overflow: hidden;
-            box-shadow: 0 1px 4px 0 rgba(0,0,0,0.03);
-        }
-        th, td {
-            border: 1px solid #e0e0e0;
-            padding: 13px 12px;
-            text-align: right;
-            font-size: 1.06em;
-        }
-        th {
-            background: #f5f5f5;
-            color: #444;
-            font-weight: normal;
-            text-align: center;
-        }
-        /* カテゴリ見出し用のスタイルを追加 */
-        .group-header th {
-            background-color: #f0f4f8;
-            text-align: left;
-            padding-left: 1em;
-            font-weight: 500;
-            color: #334;
-        }
-        .chart-container {
-            width: 95%;
-            max-width: 700px;
-            margin: 0 auto 38px auto;
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 18px 16px 12px 16px;
-            box-shadow: 0 2px 8px 0 rgba(30, 30, 60, 0.03);
-        }
-        .back-link {
-            display: block;
-            text-align: left;
-            margin-top: 38px;
-            color: #007bff;
-            text-decoration: none;
-            font-size: 1.1em;
-            transition: color 0.18s;
-        }
-        .back-link:hover {
-            color: #003a80;
-            text-decoration: underline;
-        }
+        body { font-family: 'Yu Gothic', '游ゴシック', 'Hiragino Kaku Gothic ProN', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f9f9f9; color: #333; font-size: 18px; margin: 0; padding: 0; }
+        .container { max-width: 980px; margin: 44px auto 0 auto; background: #fff; border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 30, 60, 0.08); padding: 48px 42px 38px 42px; }
+        h1 { text-align: center; color: #222; font-size: 2.15em; font-weight: 400; margin-bottom: 30px; letter-spacing: 1px; }
+        h2 { text-align: left; font-size: 1.16em; color: #007bff; font-weight: 500; border-left: 4px solid #007bff; padding-left: 13px; margin: 38px 0 16px 0; background: linear-gradient(90deg, #eaf3ff 0 80%, transparent 100%); }
+        h3 { font-size: 1.05em; color: #555; font-weight: 500; margin-bottom: 12px; }
+        form { text-align: center; margin-bottom: 32px; }
+        select { font-size: 1em; padding: 10px 14px; border: 1px solid #bbb; border-radius: 5px; margin: 0 4px 0 0; background: #fafbfc; }
+        button[type="submit"] { background-color: #007bff; color: #fff; font-size: 1.05em; padding: 10px 28px; border: none; border-radius: 7px; cursor: pointer; font-weight: 600; margin-left: 7px; transition: background 0.22s; }
+        button[type="submit"]:hover { background: #0056b3; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 36px; background: #fcfcfc; border-radius: 9px; overflow: hidden; box-shadow: 0 1px 4px 0 rgba(0,0,0,0.03); }
+        th, td { border: 1px solid #e0e0e0; padding: 13px 12px; text-align: right; font-size: 1.06em; }
+        th { background: #f5f5f5; color: #444; font-weight: normal; text-align: center; }
+        .group-header th { background-color: #f0f4f8; text-align: left; padding-left: 1em; font-weight: 500; color: #334; }
+        .chart-container { width: 95%; max-width: 800px; margin: 0 auto 38px auto; background: #f8fafc; border-radius: 12px; padding: 18px; box-shadow: 0 2px 8px 0 rgba(30, 30, 60, 0.03); }
+        .nav-links { margin-top: 2em; display: flex; justify-content: space-between; align-items: center; }
+        .nav-links a { color: #007bff; text-decoration: none; font-size: 1.1em; }
+        .nav-links a:hover { text-decoration: underline; }
+        .kpi-selectors { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 15px; justify-content: center; }
+        .kpi-selector { padding: 8px 15px; border: 1px solid #ccc; border-radius: 20px; cursor: pointer; background-color: #fff; transition: all 0.2s; font-size: 0.9em; }
+        .kpi-selector:hover { background-color: #f0f0f0; }
+        .kpi-selector.active { background-color: #007bff; color: #fff; border-color: #007bff; font-weight: bold; }
         @media (max-width: 700px) {
-            .container { padding: 14px 2vw 14px 2vw; }
+            .container { padding: 14px 2vw; }
             .chart-container { width: 100%; padding: 8px 2vw; }
             table th, table td { font-size: 1em; padding: 8px 4px; }
         }
@@ -136,14 +39,10 @@
     <h1>月報・分析レポート</h1>
     <form method="post">
         <select name="year">
-            {% for y in year_options %}
-                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}年</option>
-            {% endfor %}
+            {% for y in year_options %}<option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}年</option>{% endfor %}
         </select>
         <select name="month">
-            {% for m in range(1, 13) %}
-                <option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}月</option>
-            {% endfor %}
+            {% for m in range(1, 13) %}<option value="{{ m }}" {% if m == month %}selected{% endif %}>{{ m }}月</option>{% endfor %}
         </select>
         <button type="submit">表示</button>
     </form>
@@ -151,138 +50,26 @@
     <h2>{{ year }}年{{ month }}月 サマリー</h2>
     <table>
         <thead>
-            <tr>
-                <th>項目</th>
-                <th>{{ year }}年{{ month }}月</th>
-                <th>{{ year - 1 }}年{{ month }}月</th>
-                <th>前年同月比</th>
-            </tr>
+            <tr><th>項目</th><th>{{ year }}年{{ month }}月</th><th>{{ year - 1 }}年{{ month }}月</th><th>前年同月比</th></tr>
         </thead>
         <tbody>
             {% if current_data and last_year_data %}
-            
-            <tr class="group-header">
-                <th colspan="4">■ 全体サマリー</th>
-            </tr>
-            <tr>
-                <th>総患者数</th>
-                <td>{{ "{:,.0f}".format(current_data.total_patients) }} 人</td>
-                <td>{{ "{:,.0f}".format(last_year_data.total_patients) }} 人</td>
-                <td>
-                    {% if last_year_data.total_patients > 0 %}
-                        {{ "{:.1%}".format(current_data.total_patients / last_year_data.total_patients) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>営業日数</th>
-                <td>{{ current_data.business_days }} 日</td>
-                <td>{{ last_year_data.business_days }} 日</td>
-                <td>
-                    {% if last_year_data.business_days > 0 %}
-                        {{ "{:.1%}".format(current_data.business_days / last_year_data.business_days) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>一日平均患者数</th>
-                <td>{{ "{:,.1f}".format(current_data.avg_daily_patients) }} 人</td>
-                <td>{{ "{:,.1f}".format(last_year_data.avg_daily_patients) }} 人</td>
-                <td>
-                    {% if last_year_data.avg_daily_patients > 0 %}
-                        {{ "{:.1%}".format(current_data.avg_daily_patients / last_year_data.avg_daily_patients) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>一日平均初診率</th>
-                <td>{{ "{:,.1f}".format(current_data.new_patient_rate) }} %</td>
-                <td>{{ "{:,.1f}".format(last_year_data.new_patient_rate) }} %</td>
-                <td>-</td>
-            </tr>
-
-            <tr class="group-header">
-                <th colspan="4">■ 保険点数</th>
-            </tr>
-            <tr>
-                <th>総保険点数</th>
-                <td>{{ "{:,.0f}".format(current_data.total_points) }} 点</td>
-                <td>{{ "{:,.0f}".format(last_year_data.total_points) }} 点</td>
-                <td>
-                    {% if last_year_data.total_points > 0 %}
-                        {{ "{:.1%}".format(current_data.total_points / last_year_data.total_points) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>平均単価</th>
-                <td>{{ "{:,.0f}".format(current_data.avg_price) }} 円</td>
-                <td>{{ "{:,.0f}".format(last_year_data.avg_price) }} 円</td>
-                <td>
-                    {% if last_year_data.avg_price > 0 %}
-                        {{ "{:.1%}".format(current_data.avg_price / last_year_data.avg_price) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-
-            <tr class="group-header">
-                <th colspan="4">■ 主要検査・処置</th>
-            </tr>
-            <tr>
-                <th>胃カメラ</th>
-                <td>{{ "{:,.0f}".format(current_data['胃カメラ']) }} 件</td>
-                <td>{{ "{:,.0f}".format(last_year_data['胃カメラ']) }} 件</td>
-                <td>
-                    {% if last_year_data['胃カメラ'] > 0 %}
-                        {{ "{:.1%}".format(current_data['胃カメラ'] / last_year_data['胃カメラ']) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>大腸カメラ（ポリペクなし）</th>
-                <td>{{ "{:,.0f}".format(current_data['大腸カメラ（ポリペクなし）']) }} 件</td>
-                <td>{{ "{:,.0f}".format(last_year_data['大腸カメラ（ポリペクなし）']) }} 件</td>
-                <td>
-                    {% if last_year_data['大腸カメラ（ポリペクなし）'] > 0 %}
-                        {{ "{:.1%}".format(current_data['大腸カメラ（ポリペクなし）'] / last_year_data['大腸カメラ（ポリペクなし）']) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>大腸カメラ（ポリペクあり）</th>
-                <td>{{ "{:,.0f}".format(current_data['大腸カメラ（ポリペクあり）']) }} 件</td>
-                <td>{{ "{:,.0f}".format(last_year_data['大腸カメラ（ポリペクあり）']) }} 件</td>
-                <td>
-                    {% if last_year_data['大腸カメラ（ポリペクあり）'] > 0 %}
-                        {{ "{:.1%}".format(current_data['大腸カメラ（ポリペクあり）'] / last_year_data['大腸カメラ（ポリペクあり）']) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>インフルエンザワクチン</th>
-                <td>{{ "{:,.0f}".format(current_data['インフルエンザワクチン']) }} 件</td>
-                <td>{{ "{:,.0f}".format(last_year_data['インフルエンザワクチン']) }} 件</td>
-                <td>
-                    {% if last_year_data['インフルエンザワクチン'] > 0 %}
-                        {{ "{:.1%}".format(current_data['インフルエンザワクチン'] / last_year_data['インフルエンザワクチン']) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>健診（自治体）</th>
-                <td>{{ "{:,.0f}".format(current_data['健診（自治体）']) }} 件</td>
-                <td>{{ "{:,.0f}".format(last_year_data['健診（自治体）']) }} 件</td>
-                <td>
-                    {% if last_year_data['健診（自治体）'] > 0 %}
-                        {{ "{:.1%}".format(current_data['健診（自治体）'] / last_year_data['健診（自治体）']) }}
-                    {% else %} - {% endif %}
-                </td>
-            </tr>
-
+            <tr class="group-header"><th colspan="4">■ 全体サマリー</th></tr>
+            <tr><th>総患者数</th><td>{{ "{:,.0f}".format(current_data.total_patients) }} 人</td><td>{{ "{:,.0f}".format(last_year_data.total_patients) }} 人</td><td>{% if last_year_data.total_patients > 0 %}{{ "{:.1%}".format(current_data.total_patients / last_year_data.total_patients) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>営業日数</th><td>{{ current_data.business_days }} 日</td><td>{{ last_year_data.business_days }} 日</td><td>{% if last_year_data.business_days > 0 %}{{ "{:.1%}".format(current_data.business_days / last_year_data.business_days) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>一日平均患者数</th><td>{{ "{:,.1f}".format(current_data.avg_daily_patients) }} 人</td><td>{{ "{:,.1f}".format(last_year_data.avg_daily_patients) }} 人</td><td>{% if last_year_data.avg_daily_patients > 0 %}{{ "{:.1%}".format(current_data.avg_daily_patients / last_year_data.avg_daily_patients) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>一日平均初診率</th><td>{{ "{:,.1f}".format(current_data.new_patient_rate) }} %</td><td>{{ "{:,.1f}".format(last_year_data.new_patient_rate) }} %</td><td>-</td></tr>
+            <tr class="group-header"><th colspan="4">■ 保険点数</th></tr>
+            <tr><th>総保険点数</th><td>{{ "{:,.0f}".format(current_data.total_points) }} 点</td><td>{{ "{:,.0f}".format(last_year_data.total_points) }} 点</td><td>{% if last_year_data.total_points > 0 %}{{ "{:.1%}".format(current_data.total_points / last_year_data.total_points) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>平均単価</th><td>{{ "{:,.0f}".format(current_data.avg_price) }} 円</td><td>{{ "{:,.0f}".format(last_year_data.avg_price) }} 円</td><td>{% if last_year_data.avg_price > 0 %}{{ "{:.1%}".format(current_data.avg_price / last_year_data.avg_price) }}{% else %} - {% endif %}</td></tr>
+            <tr class="group-header"><th colspan="4">■ 主要検査・処置</th></tr>
+            <tr><th>胃カメラ</th><td>{{ "{:,.0f}".format(current_data.g_camera) }} 件</td><td>{{ "{:,.0f}".format(last_year_data.g_camera) }} 件</td><td>{% if last_year_data.g_camera > 0 %}{{ "{:.1%}".format(current_data.g_camera / last_year_data.g_camera) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>大腸カメラ（ポリペクなし）</th><td>{{ "{:,.0f}".format(current_data.c_camera_no_polypectomy) }} 件</td><td>{{ "{:,.0f}".format(last_year_data.c_camera_no_polypectomy) }} 件</td><td>{% if last_year_data.c_camera_no_polypectomy > 0 %}{{ "{:.1%}".format(current_data.c_camera_no_polypectomy / last_year_data.c_camera_no_polypectomy) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>大腸カメラ（ポリペクあり）</th><td>{{ "{:,.0f}".format(current_data.c_camera_with_polypectomy) }} 件</td><td>{{ "{:,.0f}".format(last_year_data.c_camera_with_polypectomy) }} 件</td><td>{% if last_year_data.c_camera_with_polypectomy > 0 %}{{ "{:.1%}".format(current_data.c_camera_with_polypectomy / last_year_data.c_camera_with_polypectomy) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>インフルエンザワクチン</th><td>{{ "{:,.0f}".format(current_data.flu_vaccine) }} 件</td><td>{{ "{:,.0f}".format(last_year_data.flu_vaccine) }} 件</td><td>{% if last_year_data.flu_vaccine > 0 %}{{ "{:.1%}".format(current_data.flu_vaccine / last_year_data.flu_vaccine) }}{% else %} - {% endif %}</td></tr>
+            <tr><th>健診（自治体）</th><td>{{ "{:,.0f}".format(current_data.health_check) }} 件</td><td>{{ "{:,.0f}".format(last_year_data.health_check) }} 件</td><td>{% if last_year_data.health_check > 0 %}{{ "{:.1%}".format(current_data.health_check / last_year_data.health_check) }}{% else %} - {% endif %}</td></tr>
             {% else %}
-            <tr>
-                <td colspan="4">データがありません。</td>
-            </tr>
+            <tr><td colspan="4">データがありません。</td></tr>
             {% endif %}
         </tbody>
     </table>
@@ -302,139 +89,99 @@
         <h3>保険点数推移 (vs 月間平均)</h3>
         <canvas id="pointsTrendChart"></canvas>
     </div>
+    
+    <h2>過去12ヶ月推移</h2>
+    <div class="chart-container">
+        <h3>KPI推移グラフ</h3>
+        <div class="kpi-selectors">
+            <button class="kpi-selector active" data-kpi="total_patients">①総患者数</button>
+            <button class="kpi-selector" data-kpi="business_days">②営業日数</button>
+            <button class="kpi-selector" data-kpi="avg_daily_patients">③一日平均患者数</button>
+            <button class="kpi-selector" data-kpi="new_patient_rate">④初診率(%)</button>
+            <button class="kpi-selector active" data-kpi="total_points">⑤総保険点数</button>
+            <button class="kpi-selector" data-kpi="avg_price">⑥平均単価(円)</button>
+            <button class="kpi-selector" data-kpi="g_camera">⑦胃カメラ</button>
+            <button class="kpi-selector" data-kpi="c_camera_no_polypectomy">⑧大腸カメラ(ポリペクなし)</button>
+            <button class="kpi-selector" data-kpi="c_camera_with_polypectomy">⑨大腸カメラ(ポリペクあり)</button>
+            <button class="kpi-selector" data-kpi="flu_vaccine">⑩インフルエンザワクチン</button>
+            <button class="kpi-selector" data-kpi="health_check">⑪健診(自治体)</button>
+        </div>
+        <canvas id="interactiveYearlyChart"></canvas>
+    </div>
 
-    <a href="{{ url_for('index') }}" class="back-link">← カレンダーに戻る</a>
+    <div class="nav-links">
+        <a href="{{ url_for('index') }}">← カレンダーに戻る</a>
+        <a href="{{ url_for('heatmap_analysis') }}">忙しさヒートマップへ →</a>
+    </div>
 </div>
+
 <script>
-    // Flaskから渡されたデータをJavaScript変数に変換
     const trendData = {{ trend_data | tojson }};
     const cumulativePointsData = {{ cumulative_points_data | tojson }};
     const cumulativePatientsData = {{ cumulative_patients_data | tojson }};
+    const yearlyTrendData = {{ yearly_trend_data | tojson }};
 
     // 1. 保険点数積み上げ比較グラフ
-    const cumulativePointsCtx = document.getElementById('cumulativePointsChart').getContext('2d');
-    const cumulativePointsChart = new Chart(cumulativePointsCtx, {
-        type: 'bar',
-        data: {
-            labels: cumulativePointsData.days,
-            datasets: [
-                {
-                    label: `{{ year }}年{{ month }}月 累積保険点数`,
-                    data: cumulativePointsData.cumulative_points,
-                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1,
-                    order: 2
-                },
-                {
-                    type: 'line',
-                    label: `{{ year - 1 }}年{{ month }}月 総保険点数 (目標ライン)`,
-                    data: cumulativePointsData.days.map(() => cumulativePointsData.last_year_total_points),
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointRadius: 0,
-                    fill: false,
-                    order: 1
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value, index, values) {
-                            return new Intl.NumberFormat('ja-JP').format(value) + ' 点';
-                        }
-                    }
-                }
-            }
-        }
-    });
+    if (cumulativePointsData && cumulativePointsData.days && cumulativePointsData.days.length > 0) {
+        new Chart(document.getElementById('cumulativePointsChart').getContext('2d'), {
+            type: 'bar', data: { labels: cumulativePointsData.days, datasets: [{ label: `{{ year }}年{{ month }}月 累積保険点数`, data: cumulativePointsData.cumulative_points, backgroundColor: 'rgba(54, 162, 235, 0.6)', order: 2 }, { type: 'line', label: `{{ year - 1 }}年{{ month }}月 総保険点数 (目標ライン)`, data: cumulativePointsData.days.map(() => cumulativePointsData.last_year_total_points), borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, order: 1 }] },
+            options: { scales: { y: { beginAtZero: true, ticks: { callback: (v) => new Intl.NumberFormat('ja-JP').format(v) + ' 点' } } } }
+        });
+    }
 
     // 2. 患者数積み上げ比較グラフ
-    const cumulativePatientsCtx = document.getElementById('cumulativePatientsChart').getContext('2d');
-    const cumulativePatientsChart = new Chart(cumulativePatientsCtx, {
-        type: 'bar',
-        data: {
-            labels: cumulativePatientsData.days,
-            datasets: [
-                {
-                    label: `{{ year }}年{{ month }}月 累積患者数`,
-                    data: cumulativePatientsData.cumulative_patients,
-                    backgroundColor: 'rgba(75, 192, 192, 0.6)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1,
-                    order: 2
-                },
-                {
-                    type: 'line',
-                    label: `{{ year - 1 }}年{{ month }}月 総患者数 (目標ライン)`,
-                    data: cumulativePatientsData.days.map(() => cumulativePatientsData.last_year_total_patients),
-                    borderColor: 'rgba(255, 159, 64, 1)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointRadius: 0,
-                    fill: false,
-                    order: 1
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value, index, values) {
-                            return value + ' 人';
-                        }
-                    }
-                }
-            }
-        }
-    });
+    if (cumulativePatientsData && cumulativePatientsData.days && cumulativePatientsData.days.length > 0) {
+        new Chart(document.getElementById('cumulativePatientsChart').getContext('2d'), {
+            type: 'bar', data: { labels: cumulativePatientsData.days, datasets: [{ label: `{{ year }}年{{ month }}月 累積患者数`, data: cumulativePatientsData.cumulative_patients, backgroundColor: 'rgba(75, 192, 192, 0.6)', order: 2 }, { type: 'line', label: `{{ year - 1 }}年{{ month }}月 総患者数 (目標ライン)`, data: cumulativePatientsData.days.map(() => cumulativePatientsData.last_year_total_patients), borderColor: 'rgba(255, 159, 64, 1)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, order: 1 }] },
+            options: { scales: { y: { beginAtZero: true, ticks: { callback: (v) => v + ' 人' } } } }
+        });
+    }
 
-    // 3. 保険点数推移グラフ
-    const pointsTrendCtx = document.getElementById('pointsTrendChart').getContext('2d');
-    const pointsTrendChart = new Chart(pointsTrendCtx, {
-        type: 'bar',
-        data: {
-            labels: trendData.days,
-            datasets: [
-                {
-                    label: '日次保険点数',
-                    data: trendData.points,
-                    backgroundColor: 'rgba(255, 206, 86, 0.6)',
-                    borderColor: 'rgba(255, 206, 86, 1)',
-                    order: 2
-                },
-                {
-                    type: 'line',
-                    label: '月間平均保険点数',
-                    data: trendData.days.map(() => trendData.average_points),
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 2,
-                    borderDash: [5, 5],
-                    pointRadius: 0,
-                    fill: false,
-                    order: 1
-                }
-            ]
-        },
-        options: {
-            scales: {
-                y: {
-                    beginAtZero: true,
-                     ticks: {
-                        callback: function(value, index, values) {
-                            return new Intl.NumberFormat('ja-JP').format(value) + ' 点';
-                        }
-                    }
-                }
-            }
+    // 3. 保険点数推移 (vs 月間平均)
+    if (trendData && trendData.days && trendData.days.length > 0) {
+        new Chart(document.getElementById('pointsTrendChart').getContext('2d'), {
+            type: 'bar', data: { labels: trendData.days, datasets: [{ label: '日次保険点数', data: trendData.points, backgroundColor: 'rgba(255, 206, 86, 0.6)', order: 2 }, { type: 'line', label: '月間平均保険点数', data: trendData.days.map(() => trendData.average_points), borderColor: 'rgba(255, 99, 132, 1)', borderWidth: 2, borderDash: [5, 5], pointRadius: 0, fill: false, order: 1 }] },
+            options: { scales: { x: { ticks: { color: (c) => trendData.day_colors[c.index] } }, y: { beginAtZero: true, ticks: { callback: (v) => new Intl.NumberFormat('ja-JP').format(v) + ' 点' } } } }
+        });
+    }
+    
+    // 4. インタラクティブな過去12ヶ月比較グラフ
+    if (yearlyTrendData && yearlyTrendData.labels && yearlyTrendData.labels.length > 0) {
+        const interactiveCtx = document.getElementById('interactiveYearlyChart').getContext('2d');
+        const kpiConfig = {
+            total_patients: { label: '総患者数 (人)', type: 'bar', yAxisID: 'y_people', backgroundColor: 'rgba(54, 162, 235, 0.5)' }, business_days: { label: '営業日数 (日)', type: 'bar', yAxisID: 'y_days', backgroundColor: 'rgba(75, 192, 192, 0.5)' }, avg_daily_patients: { label: '一日平均患者数 (人)', type: 'bar', yAxisID: 'y_people', backgroundColor: 'rgba(94, 202, 255, 0.5)' }, new_patient_rate: { label: '初診率 (%)', type: 'line', yAxisID: 'y_percent', borderColor: 'rgba(255, 159, 64, 1)', tension: 0.1 }, total_points: { label: '総保険点数 (点)', type: 'line', yAxisID: 'y_points', borderColor: 'rgba(255, 99, 132, 1)', tension: 0.1 }, avg_price: { label: '平均単価 (円)', type: 'line', yAxisID: 'y_yen', borderColor: 'rgba(153, 102, 255, 1)', tension: 0.1 }, g_camera: { label: '胃カメラ (件)', type: 'bar', yAxisID: 'y_cases', backgroundColor: 'rgba(255, 206, 86, 0.5)' }, c_camera_no_polypectomy: { label: '大腸カメラ(ポリペクなし) (件)', type: 'bar', yAxisID: 'y_cases', backgroundColor: 'rgba(201, 203, 207, 0.5)' }, c_camera_with_polypectomy: { label: '大腸カメラ(ポリペクあり) (件)', type: 'bar', yAxisID: 'y_cases', backgroundColor: 'rgba(100, 100, 100, 0.5)' }, flu_vaccine: { label: 'インフルエンザワクチン (件)', type: 'bar', yAxisID: 'y_cases', backgroundColor: 'rgba(255, 159, 64, 0.5)' }, health_check: { label: '健診(自治体) (件)', type: 'bar', yAxisID: 'y_cases', backgroundColor: 'rgba(75, 192, 192, 0.5)' },
+        };
+        const availableYAxes = {
+            y_people: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: '人数' } }, y_days: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: '日数' } }, y_percent: { type: 'linear', position: 'right', beginAtZero: true, title: { display: true, text: '率 (%)' }, grid: { drawOnChartArea: false } }, y_points: { type: 'linear', position: 'right', beginAtZero: true, title: { display: true, text: '点数' }, grid: { drawOnChartArea: false } }, y_yen: { type: 'linear', position: 'right', beginAtZero: true, title: { display: true, text: '円' }, grid: { drawOnChartArea: false } }, y_cases: { type: 'linear', position: 'left', beginAtZero: true, title: { display: true, text: '件数' } },
+        };
+        const initialKPIs = ['total_patients', 'total_points'];
+        const initialDatasets = initialKPIs.map(kpi => ({ ...kpiConfig[kpi], data: yearlyTrendData.kpi_data[kpi] }));
+        const interactiveChart = new Chart(interactiveCtx, { type: 'bar', data: { labels: yearlyTrendData.labels, datasets: initialDatasets }, options: { scales: {} } });
+        
+        function updateActiveAxes() {
+            const activeAxes = {};
+            interactiveChart.data.datasets.forEach(d => { if (!activeAxes[d.yAxisID]) activeAxes[d.yAxisID] = { ...availableYAxes[d.yAxisID] } });
+            const left = [], right = [];
+            Object.keys(activeAxes).forEach(id => { (availableYAxes[id].position === 'right' ? right : left).push(id) });
+            if (left.length === 0 && right.length > 1) activeAxes[right[1]].position = 'left';
+            if (right.length === 0 && left.length > 1) activeAxes[left[1]].position = 'right';
+            interactiveChart.options.scales = activeAxes;
         }
-    });
+        updateActiveAxes();
+        interactiveChart.update();
+
+        document.querySelectorAll('.kpi-selector').forEach(button => {
+            button.addEventListener('click', () => {
+                button.classList.toggle('active');
+                const kpi = button.dataset.kpi;
+                const idx = interactiveChart.data.datasets.findIndex(d => d.label === kpiConfig[kpi].label);
+                if (idx > -1) interactiveChart.data.datasets.splice(idx, 1);
+                else interactiveChart.data.datasets.push({ ...kpiConfig[kpi], data: yearlyTrendData.kpi_data[kpi] });
+                updateActiveAxes();
+                interactiveChart.update();
+            });
+        });
+    }
 </script>
 </body>
 </html>

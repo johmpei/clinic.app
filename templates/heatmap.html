@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>忙しさヒートマップ</title>
+    <style>
+        body { font-family: 'Yu Gothic', '游ゴシック', 'Hiragino Kaku Gothic ProN', sans-serif; background: #f9f9f9; color: #333; font-size: 18px; margin: 2em; }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; border-radius: 14px; box-shadow: 0 4px 20px rgba(30, 30, 60, 0.08); padding: 2em; }
+        h1 { text-align: center; color: #222; font-size: 2.2em; font-weight: 400; margin-bottom: 1em; }
+        .description { text-align: center; color: #555; margin-bottom: 2em; font-size: 1em; line-height: 1.6; }
+        form { display: flex; justify-content: center; align-items: center; gap: 1em; margin-bottom: 2em; flex-wrap: wrap; }
+        input[type="date"] { font-size: 1.1em; padding: 0.5em; border: 1px solid #ccc; border-radius: 5px; }
+        button { background: #007bff; color: #fff; font-size: 1.1em; padding: 0.6em 1.5em; border: none; border-radius: 7px; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #0056b3; }
+        .heatmap-table { border-collapse: collapse; width: 100%; text-align: center; }
+        .heatmap-table th, .heatmap-table td { border: 1px solid #ddd; padding: 1.2em 0.5em; }
+        .heatmap-table th {
+            background-color: #f7f7f7;
+            font-size: 1.25em; /* ヘッダーの文字サイズを大きく */
+            font-weight: 500;
+        }
+        .heatmap-table td {
+            color: #000;
+            font-weight: 500;
+            font-size: 1.2em; /* 数字の文字サイズを大きく */
+        }
+        .day-label {
+            font-weight: bold;
+            text-align: center; /* 横方向の中央揃え */
+            vertical-align: middle; /* 縦方向の中央揃え */
+            width: 5em;
+            font-size: 1.25em; /* 曜日の文字サイズを大きく */
+        }
+        .nav-links { margin-top: 2em; display: flex; justify-content: space-between; }
+        .nav-links a { color: #007bff; text-decoration: none; font-size: 1.1em; }
+        .nav-links a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>忙しさヒートマップ - {{ サンプルクリニック }}</h1>
+        <p class="description">
+            指定された期間における、曜日・時間帯ごとの**平均来院患者数**です。<br>
+            色が<span style="background-color: hsl(180, 85%, 65%); padding: 0 0.5em; border-radius: 3px;">水色</span>に近いほど空いており、<span style="background-color: hsl(-20, 85%, 65%); padding: 0 0.5em; border-radius: 3px;">赤色</span>に近いほど混雑していることを示します。
+        </p>
+        <form method="post">
+            <label>期間: <input type="date" name="start_date" value="{{ start_date }}"></label>
+            <span>～</span>
+            <label><input type="date" name="end_date" value="{{ end_date }}"></label>
+            <button type="submit">表示</button>
+        </form>
+
+        <table class="heatmap-table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>午前 (AM) (人)</th>
+                    <th>午後 (PM) (人)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set days = {1: '月', 2: '火', 3: '水', 4: '木', 5: '金', 6: '土'} %}
+                {% for day_num, day_name in days.items() %}
+                <tr>
+                    <td class="day-label">{{ day_name }}</td>
+                    {% set am_val = heatmap_data.get(day_num, {}).get('AM') %}
+                    <td style="background-color: {{ get_color_for_value(am_val, min_avg, max_avg) }};">
+                        {{ "{:,.1f}".format(am_val) if am_val is not none else '-' }}
+                    </td>
+                    
+                    {% set pm_val = heatmap_data.get(day_num, {}).get('PM') %}
+                    <td style="background-color: {{ get_color_for_value(pm_val, min_avg, max_avg) }};">
+                         {{ "{:,.1f}".format(pm_val) if pm_val is not none else '-' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}">← カレンダーに戻る</a>
+            <a href="{{ url_for('monthly_report') }}">月報・分析レポートへ →</a>
+        </div>
+    </div>
+</body>
+</html>
