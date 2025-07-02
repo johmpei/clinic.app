@@ -322,9 +322,6 @@ def daily_report(year, month, day):
     total_points = result[1] if result else 0
     total_sales = result[2] if result else 0
 
-
-
-
     shifts = {}
     if daily_report_id:
         cursor.execute(
@@ -448,65 +445,9 @@ def daily_report(year, month, day):
                 )
 
         conn.commit()
-        message = "保存しました！"
-
-        # 保存直後のデータを再取得して反映する (これは変更なしでOK)
-        cursor.execute(
-            "SELECT total_points, total_sales FROM daily_reports WHERE clinic_id=? AND date=?",
-            (clinic_id, report_date)
-        )
-        result_after_save = cursor.fetchone()
-        total_points = result_after_save[0] if result_after_save else 0
-        total_sales = result_after_save[1] if result_after_save else 0
-
-        cursor.execute(
-            "SELECT time_period, new_patients, returning_patients, total_patients FROM shifts WHERE daily_report_id=?",
-            (daily_report_id,)
-        )
-        shifts_data_after_save = cursor.fetchall()
-        shifts = {}
-        for row in shifts_data_after_save:
-            period, new_patients, returning_patients, total_patients = row
-            shifts[period] = {
-                'new_patients': new_patients,
-                'returning_patients': returning_patients,
-                'total_patients': total_patients
-            }
-        for period in ['AM', 'PM', '夜間']:
-            if period not in shifts:
-                shifts[period] = {'new_patients': 0, 'returning_patients': 0, 'total_patients': 0}
-
-        procedures_records = {}
-        cursor.execute(
-            "SELECT procedure_id, time_period, count FROM procedure_records WHERE daily_report_id=?",
-            (daily_report_id,)
-        )
-        proc_records_data_after_save = cursor.fetchall()
-        for row in proc_records_data_after_save:
-            procedure_id, time_period, count = row
-            if procedure_id not in procedures_records:
-                procedures_records[procedure_id] = {}
-            procedures_records[procedure_id][time_period] = count
-
-        for proc_id, _ in procedures_master:
-            if proc_id not in procedures_records:
-                procedures_records[proc_id] = {}
-            for period in ['AM', 'PM', '夜間']:
-                if period not in procedures_records[proc_id]:
-                    procedures_records[proc_id][period] = 0
-
-        daily_doctors = {'AM': [], 'PM': [], '夜間': []}
-        cursor.execute(
-            "SELECT doctor_id, time_period FROM daily_doctor_shifts WHERE daily_report_id=?",
-            (daily_report_id,)
-        )
-        doctor_shifts_data_after_save = cursor.fetchall()
-        for doctor_id, time_period in doctor_shifts_data_after_save:
-            if time_period in daily_doctors:
-                daily_doctors[time_period].append(doctor_id)
-        for period in ['AM', 'PM', '夜間']:
-            if period not in daily_doctors:
-                daily_doctors[period] = []
+        
+        flash('保存しました！', 'success')
+        return redirect(url_for('daily_report', year=year, month=month, day=day))
 
     conn.close()
 
@@ -546,9 +487,7 @@ def delete_report(year, month, day):
 
         if daily_report_id:
             daily_report_id = daily_report_id[0]
-            cursor.execute("DELETE FROM shifts WHERE daily_report_id=?", (daily_report_id,))
-            cursor.execute("DELETE FROM procedure_records WHERE daily_report_id=?", (daily_report_id,))
-            cursor.execute("DELETE FROM daily_doctor_shifts WHERE daily_report_id=?", (daily_report_id,))
+            # ON DELETE CASCADE が設定されているので、関連データも自動で削除される
             cursor.execute("DELETE FROM daily_reports WHERE id=?", (daily_report_id,))
             conn.commit()
             flash('日報を削除しました。', 'success')
@@ -686,6 +625,7 @@ def monthly_report():
     username = "ゲスト"
     clinic_name = "未所属クリニック"
 
+    # --- ユーザー・クリニック情報取得 (この部分は変更なし) ---
     conn = sqlite3.connect('daily_report.db')
     cursor = conn.cursor()
     if user_id:
@@ -700,19 +640,49 @@ def monthly_report():
                 if clinic_data:
                     clinic_name = clinic_data[0]
     conn.close()
+    # --- ここまで変更なし ---
 
     today = date.today()
     year = request.form.get('year', default=today.year, type=int)
     month = request.form.get('month', default=today.month, type=int)
 
-    current_month_data = {'total_sales': 0, 'total_points': 0, 'new_patients': 0, 'returning_patients': 0, 'total_patients': 0}
-    last_year_data = {'total_sales': 0, 'total_points': 0, 'new_patients': 0, 'returning_patients': 0, 'total_patients': 0}
-    trend_data = {'days': [], 'sales': [], 'patients': []}
+    def get_summary_data(target_year, target_month, clinic_id):
+        """サマリーデータをまとめて取得する内部関数"""
+        if not clinic_id:
+            return None
 
-    if clinic_id: # clinic_idがある場合のみデータを取得
-        current_month_data = get_monthly_data(year, month, clinic_id)
-        last_year_data = get_monthly_data(year - 1, month, clinic_id)
-        trend_data = get_daily_trend_data(year, month, clinic_id)
+        # 基本データを取得
+        base_data = get_monthly_data(target_year, target_month, clinic_id)
+        # 処置件数を取得
+        proc_counts = get_monthly_procedure_counts(target_year, target_month, clinic_id)
+        # 営業日数を計算
+        business_days = calculate_business_days(target_year, target_month)
+        
+        # 各指標を計算
+        total_patients = base_data.get('total_patients', 0)
+        total_points = base_data.get('total_points', 0)
+        new_patients = base_data.get('new_patients', 0)
+        
+        avg_daily_patients = (total_patients / business_days) if business_days > 0 else 0
+        new_patient_rate = (new_patients / total_patients * 100) if total_patients > 0 else 0
+        avg_price = (total_points / total_patients * 10) if total_patients > 0 else 0
+        
+        summary = {
+            'total_patients': total_patients,
+            'returning_patients': base_data.get('returning_patients', 0),
+            'business_days': business_days,
+            'avg_daily_patients': avg_daily_patients,
+            'new_patients': new_patients,
+            'new_patient_rate': new_patient_rate,
+            'total_points': total_points,
+            'avg_price': avg_price,
+            **proc_counts # 処置件数の辞書を展開して結合
+        }
+        return summary
+
+    current_summary = get_summary_data(year, month, clinic_id)
+    last_year_summary = get_summary_data(year - 1, month, clinic_id)
+    trend_data = get_daily_trend_data(year, month, clinic_id) if clinic_id else {}
     
     year_options = range(today.year, today.year - 10, -1)
     
@@ -721,12 +691,69 @@ def monthly_report():
         year=year,
         month=month,
         year_options=year_options,
-        current_data=current_month_data,
-        last_year_data=last_year_data,
+        current_data=current_summary,   # 新しいサマリーデータ
+        last_year_data=last_year_summary, # 新しいサマリーデータ
         trend_data=trend_data,
         username=username,
         clinic_name=clinic_name
     )
+
+def calculate_business_days(year, month):
+    """営業日数を計算する（平日:1, 土曜:0.5, 日祝:0）"""
+    jp_holidays = holidays.Japan()
+    business_days = 0
+    cal = calendar.Calendar()
+
+    for day in cal.itermonthdates(year, month):
+        # その月の日付のみを対象
+        if day.month == month:
+            # 日曜 (weekday==6) または祝日
+            if day.weekday() == 6 or day in jp_holidays:
+                continue
+            # 土曜 (weekday==5)
+            elif day.weekday() == 5:
+                business_days += 0.5
+            # 平日
+            else:
+                business_days += 1
+    return business_days
+
+def get_monthly_procedure_counts(year, month, clinic_id):
+    """特定の処置項目の月間合計数を取得する"""
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    
+    # 取得したい処置リスト
+    target_procedures = [
+        '胃カメラ', '大腸カメラ（ポリペクなし）', '大腸カメラ（ポリペクあり）',
+        'インフルエンザワクチン', '健診（自治体）'
+    ]
+    
+    # プレースホルダを作成
+    placeholders = ','.join('?' for name in target_procedures)
+    
+    query = f"""
+        SELECT p.name, SUM(pr.count)
+        FROM procedure_records pr
+        JOIN procedures p ON pr.procedure_id = p.id
+        JOIN daily_reports dr ON pr.daily_report_id = dr.id
+        WHERE dr.clinic_id = ?
+          AND STRFTIME('%Y', dr.date) = ?
+          AND STRFTIME('%m', dr.date) = ?
+          AND p.name IN ({placeholders})
+        GROUP BY p.name
+    """
+    
+    params = [clinic_id, str(year), f"{month:02d}"] + target_procedures
+    cursor.execute(query, params)
+    
+    # 結果を辞書に格納
+    counts = {name: 0 for name in target_procedures}
+    for row in cursor.fetchall():
+        counts[row[0]] = row[1]
+        
+    conn.close()
+    return counts
 
 if __name__ == '__main__':
     app.run(debug=True)

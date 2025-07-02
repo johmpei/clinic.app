@@ -94,6 +94,14 @@
             font-weight: normal;
             text-align: center;
         }
+        /* カテゴリ見出し用のスタイルを追加 */
+        .group-header th {
+            background-color: #f0f4f8;
+            text-align: left;
+            padding-left: 1em;
+            font-weight: 500;
+            color: #334;
+        }
         .chart-container {
             width: 95%;
             max-width: 700px;
@@ -139,67 +147,146 @@
         </select>
         <button type="submit">表示</button>
     </form>
+    
     <h2>{{ year }}年{{ month }}月 サマリー</h2>
     <table>
         <thead>
             <tr>
                 <th>項目</th>
                 <th>{{ year }}年{{ month }}月</th>
-                <th>{{ year - 1 }}年{{ month }}月<br>（前年同月）</th>
+                <th>{{ year - 1 }}年{{ month }}月</th>
                 <th>前年同月比</th>
             </tr>
         </thead>
         <tbody>
-            <tr>
-                <th>総売上</th>
-                <td>{{ "{:,.0f}".format(current_data.total_sales) }} 円</td>
-                <td>{{ "{:,.0f}".format(last_year_data.total_sales) }} 円</td>
-                <td>
-                    {% if last_year_data.total_sales > 0 %}
-                        {{ "{:.1%}".format(current_data.total_sales / last_year_data.total_sales) }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
-            </tr>
-            <tr>
-                <th>総ポイント</th>
-                <td>{{ "{:,.0f}".format(current_data.total_points) }}</td>
-                <td>{{ "{:,.0f}".format(last_year_data.total_points) }}</td>
-                <td>
-                     {% if last_year_data.total_points > 0 %}
-                        {{ "{:.1%}".format(current_data.total_points / last_year_data.total_points) }}
-                    {% else %}
-                        -
-                    {% endif %}
-                </td>
+            {% if current_data and last_year_data %}
+            
+            <tr class="group-header">
+                <th colspan="4">■ 全体サマリー</th>
             </tr>
             <tr>
                 <th>総患者数</th>
-                <td>{{ current_data.total_patients }} 人</td>
-                <td>{{ last_year_data.total_patients }} 人</td>
+                <td>{{ "{:,.0f}".format(current_data.total_patients) }} 人</td>
+                <td>{{ "{:,.0f}".format(last_year_data.total_patients) }} 人</td>
                 <td>
                     {% if last_year_data.total_patients > 0 %}
                         {{ "{:.1%}".format(current_data.total_patients / last_year_data.total_patients) }}
-                    {% else %}
-                        -
-                    {% endif %}
+                    {% else %} - {% endif %}
                 </td>
             </tr>
             <tr>
-                <th>(内訳) 新規患者数</th>
-                <td>{{ current_data.new_patients }} 人</td>
-                <td>{{ last_year_data.new_patients }} 人</td>
-                <td></td>
+                <th>営業日数</th>
+                <td>{{ current_data.business_days }} 日</td>
+                <td>{{ last_year_data.business_days }} 日</td>
+                <td>
+                    {% if last_year_data.business_days > 0 %}
+                        {{ "{:.1%}".format(current_data.business_days / last_year_data.business_days) }}
+                    {% else %} - {% endif %}
+                </td>
             </tr>
             <tr>
-                <th>(内訳) 再診患者数</th>
-                <td>{{ current_data.returning_patients }} 人</td>
-                <td>{{ last_year_data.returning_patients }} 人</td>
-                <td></td>
+                <th>一日平均患者数</th>
+                <td>{{ "{:,.1f}".format(current_data.avg_daily_patients) }} 人</td>
+                <td>{{ "{:,.1f}".format(last_year_data.avg_daily_patients) }} 人</td>
+                <td>
+                    {% if last_year_data.avg_daily_patients > 0 %}
+                        {{ "{:.1%}".format(current_data.avg_daily_patients / last_year_data.avg_daily_patients) }}
+                    {% else %} - {% endif %}
+                </td>
             </tr>
+            <tr>
+                <th>一日平均初診率</th>
+                <td>{{ "{:,.1f}".format(current_data.new_patient_rate) }} %</td>
+                <td>{{ "{:,.1f}".format(last_year_data.new_patient_rate) }} %</td>
+                <td>-</td>
+            </tr>
+
+            <tr class="group-header">
+                <th colspan="4">■ 保険点数</th>
+            </tr>
+            <tr>
+                <th>総保険点数</th>
+                <td>{{ "{:,.0f}".format(current_data.total_points) }} 点</td>
+                <td>{{ "{:,.0f}".format(last_year_data.total_points) }} 点</td>
+                <td>
+                    {% if last_year_data.total_points > 0 %}
+                        {{ "{:.1%}".format(current_data.total_points / last_year_data.total_points) }}
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>平均単価</th>
+                <td>{{ "{:,.0f}".format(current_data.avg_price) }} 円</td>
+                <td>{{ "{:,.0f}".format(last_year_data.avg_price) }} 円</td>
+                <td>
+                    {% if last_year_data.avg_price > 0 %}
+                        {{ "{:.1%}".format(current_data.avg_price / last_year_data.avg_price) }}
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+
+            <tr class="group-header">
+                <th colspan="4">■ 主要検査・処置</th>
+            </tr>
+            <tr>
+                <th>胃カメラ</th>
+                <td>{{ "{:,.0f}".format(current_data['胃カメラ']) }} 件</td>
+                <td>{{ "{:,.0f}".format(last_year_data['胃カメラ']) }} 件</td>
+                <td>
+                    {% if last_year_data['胃カメラ'] > 0 %}
+                        {{ "{:.1%}".format(current_data['胃カメラ'] / last_year_data['胃カメラ']) }}
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>大腸カメラ（ポリペクなし）</th>
+                <td>{{ "{:,.0f}".format(current_data['大腸カメラ（ポリペクなし）']) }} 件</td>
+                <td>{{ "{:,.0f}".format(last_year_data['大腸カメラ（ポリペクなし）']) }} 件</td>
+                <td>
+                    {% if last_year_data['大腸カメラ（ポリペクなし）'] > 0 %}
+                        {{ "{:.1%}".format(current_data['大腸カメラ（ポリペクなし）'] / last_year_data['大腸カメラ（ポリペクなし）']) }}
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>大腸カメラ（ポリペクあり）</th>
+                <td>{{ "{:,.0f}".format(current_data['大腸カメラ（ポリペクあり）']) }} 件</td>
+                <td>{{ "{:,.0f}".format(last_year_data['大腸カメラ（ポリペクあり）']) }} 件</td>
+                <td>
+                    {% if last_year_data['大腸カメラ（ポリペクあり）'] > 0 %}
+                        {{ "{:.1%}".format(current_data['大腸カメラ（ポリペクあり）'] / last_year_data['大腸カメラ（ポリペクあり）']) }}
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>インフルエンザワクチン</th>
+                <td>{{ "{:,.0f}".format(current_data['インフルエンザワクチン']) }} 件</td>
+                <td>{{ "{:,.0f}".format(last_year_data['インフルエンザワクチン']) }} 件</td>
+                <td>
+                    {% if last_year_data['インフルエンザワクチン'] > 0 %}
+                        {{ "{:.1%}".format(current_data['インフルエンザワクチン'] / last_year_data['インフルエンザワクチン']) }}
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+            <tr>
+                <th>健診（自治体）</th>
+                <td>{{ "{:,.0f}".format(current_data['健診（自治体）']) }} 件</td>
+                <td>{{ "{:,.0f}".format(last_year_data['健診（自治体）']) }} 件</td>
+                <td>
+                    {% if last_year_data['健診（自治体）'] > 0 %}
+                        {{ "{:.1%}".format(current_data['健診（自治体）'] / last_year_data['健診（自治体）']) }}
+                    {% else %} - {% endif %}
+                </td>
+            </tr>
+
+            {% else %}
+            <tr>
+                <td colspan="4">データがありません。</td>
+            </tr>
+            {% endif %}
         </tbody>
     </table>
+
     <h2>日次推移グラフ</h2>
     <div class="chart-container">
         <h3>売上推移</h3>
