@@ -287,6 +287,11 @@
         </tbody>
     </table>
 
+    <h2>月次保険点数 積み上げ比較</h2>
+    <div class="chart-container">
+        <h3>昨年同月保険点数との比較</h3>
+        <canvas id="cumulativePointsChart"></canvas>
+    </div>
     <h2>日次推移グラフ</h2>
     <div class="chart-container">
         <h3>売上推移</h3>
@@ -301,7 +306,56 @@
 <script>
     // Flaskから渡されたデータをJavaScript変数に変換
     const trendData = {{ trend_data | tojson }};
-    // 1. 売上推移グラフ
+    const cumulativeChartData = {{ cumulative_chart_data | tojson }};
+
+    // ▼▼▼【ここから修正】▼▼▼
+    // 1. 保険点数積み上げ比較グラフ
+    const cumulativePointsCtx = document.getElementById('cumulativePointsChart').getContext('2d');
+    const cumulativePointsChart = new Chart(cumulativePointsCtx, {
+        type: 'bar', // 基本は棒グラフ
+        data: {
+            labels: cumulativeChartData.days,
+            datasets: [
+                {
+                    // 今年の累積保険点数（棒グラフ）
+                    label: `{{ year }}年{{ month }}月 累積保険点数`,
+                    data: cumulativeChartData.cumulative_points,
+                    backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1,
+                    order: 2 // 棒グラフを奥に表示
+                },
+                {
+                    // 昨年同月の総保険点数（破線のゴールライン）
+                    type: 'line', // このデータセットだけ線グラフ
+                    label: `{{ year - 1 }}年{{ month }}月 総保険点数 (目標ライン)`,
+                    data: cumulativeChartData.days.map(() => cumulativeChartData.last_year_total_points),
+                    borderColor: 'rgba(255, 99, 132, 1)',
+                    borderWidth: 2,
+                    borderDash: [5, 5], // 破線にする
+                    pointRadius: 0, // データ点を非表示に
+                    fill: false,
+                    order: 1 // 線グラフを手前に表示
+                }
+            ]
+        },
+        options: {
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        // 目盛りを「〇〇 点」の形式にする
+                        callback: function(value, index, values) {
+                            return new Intl.NumberFormat('ja-JP').format(value) + ' 点';
+                        }
+                    }
+                }
+            }
+        }
+    });
+    // ▲▲▲【ここまで修正】▲▲▲
+
+    // 2. 売上推移グラフ (既存のグラフ)
     const salesCtx = document.getElementById('salesChart').getContext('2d');
     const salesChart = new Chart(salesCtx, {
         type: 'line',
@@ -317,7 +371,8 @@
             }]
         }
     });
-    // 2. 患者数推移グラフ
+
+    // 3. 患者数推移グラフ (既存のグラフ)
     const patientsCtx = document.getElementById('patientsChart').getContext('2d');
     const patientsChart = new Chart(patientsCtx, {
         type: 'bar',
@@ -326,8 +381,8 @@
             datasets: [{
                 label: '日次患者数 (人)',
                 data: trendData.patients,
-                borderColor: 'rgba(255, 99, 132, 1)',
-                backgroundColor: 'rgba(255, 99, 132, 0.5)',
+                borderColor: 'rgba(255, 159, 64, 1)',
+                backgroundColor: 'rgba(255, 159, 64, 0.5)',
             }]
         },
         options: {

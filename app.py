@@ -69,8 +69,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS procedures (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             clinic_id INTEGER NOT NULL,
-            name TEXT NOT NULL UNIQUE,
-            FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+            name TEXT NOT NULL,
+            FOREIGN KEY (clinic_id) REFERENCES clinics(id),
+            UNIQUE (clinic_id, name)
         )
     """)
     # procedure_records テーブルが存在しない場合のみ作成
@@ -91,8 +92,9 @@ def init_db():
         CREATE TABLE IF NOT EXISTS doctors (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             clinic_id INTEGER NOT NULL,
-            name TEXT NOT NULL UNIQUE,
-            FOREIGN KEY (clinic_id) REFERENCES clinics(id)
+            name TEXT NOT NULL,
+            FOREIGN KEY (clinic_id) REFERENCES clinics(id),
+            UNIQUE (clinic_id, name)
         )
     """)
     # daily_doctor_shifts テーブルが存在しない場合のみ作成
@@ -617,87 +619,6 @@ def get_daily_trend_data(year, month, clinic_id):
     conn.close()
     return {'days': days, 'sales': sales, 'patients': patients}
 
-@app.route('/monthly_report', methods=['GET', 'POST'])
-@login_required
-def monthly_report():
-    clinic_id = session.get('clinic_id')
-    user_id = session.get('user_id')
-    username = "ゲスト"
-    clinic_name = "未所属クリニック"
-
-    # --- ユーザー・クリニック情報取得 (この部分は変更なし) ---
-    conn = sqlite3.connect('daily_report.db')
-    cursor = conn.cursor()
-    if user_id:
-        cursor.execute("SELECT username, clinic_id FROM users WHERE id=?", (user_id,))
-        user_data = cursor.fetchone()
-        if user_data:
-            username = user_data[0]
-            current_clinic_id = user_data[1]
-            if current_clinic_id:
-                cursor.execute("SELECT name FROM clinics WHERE id=?", (current_clinic_id,))
-                clinic_data = cursor.fetchone()
-                if clinic_data:
-                    clinic_name = clinic_data[0]
-    conn.close()
-    # --- ここまで変更なし ---
-
-    today = date.today()
-    year = request.form.get('year', default=today.year, type=int)
-    month = request.form.get('month', default=today.month, type=int)
-
-    def get_summary_data(target_year, target_month, clinic_id):
-        """サマリーデータをまとめて取得する内部関数"""
-        if not clinic_id:
-            return None
-
-        # 基本データを取得
-        base_data = get_monthly_data(target_year, target_month, clinic_id)
-        # 処置件数を取得
-        proc_counts = get_monthly_procedure_counts(target_year, target_month, clinic_id)
-        # 営業日数を計算
-        business_days = calculate_business_days(target_year, target_month)
-        
-        # 各指標を計算
-        total_patients = base_data.get('total_patients', 0)
-        total_points = base_data.get('total_points', 0)
-        new_patients = base_data.get('new_patients', 0)
-        
-        avg_daily_patients = (total_patients / business_days) if business_days > 0 else 0
-        new_patient_rate = (new_patients / total_patients * 100) if total_patients > 0 else 0
-        avg_price = (total_points / total_patients * 10) if total_patients > 0 else 0
-        
-        summary = {
-            'total_patients': total_patients,
-            'returning_patients': base_data.get('returning_patients', 0),
-            'business_days': business_days,
-            'avg_daily_patients': avg_daily_patients,
-            'new_patients': new_patients,
-            'new_patient_rate': new_patient_rate,
-            'total_points': total_points,
-            'avg_price': avg_price,
-            **proc_counts # 処置件数の辞書を展開して結合
-        }
-        return summary
-
-    current_summary = get_summary_data(year, month, clinic_id)
-    last_year_summary = get_summary_data(year - 1, month, clinic_id)
-    trend_data = get_daily_trend_data(year, month, clinic_id) if clinic_id else {}
-    
-    year_options = range(today.year, today.year - 10, -1)
-    
-    return render_template(
-        'monthly_report.html',
-        year=year,
-        month=month,
-        year_options=year_options,
-        current_data=current_summary,   # 新しいサマリーデータ
-        last_year_data=last_year_summary, # 新しいサマリーデータ
-        trend_data=trend_data,
-        username=username,
-        clinic_name=clinic_name
-    )
-
 def calculate_business_days(year, month):
     """営業日数を計算する（平日:1, 土曜:0.5, 日祝:0）"""
     jp_holidays = holidays.Japan()
@@ -754,6 +675,148 @@ def get_monthly_procedure_counts(year, month, clinic_id):
         
     conn.close()
     return counts
+
+# ▼▼▼【ここから修正】▼▼▼
+def get_cumulative_daily_points_data(year, month, clinic_id):
+    """月間の日次累積「保険点数」と、前年同月の総「保険点数」を取得する"""
+    if not clinic_id:
+        return {'days': [], 'cumulative_points': [], 'last_year_total_points': 0}
+        
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+
+    # 今月の営業日数と日次「保険点数」を取得
+    _, num_days = calendar.monthrange(year, month)
+    daily_points = {day: 0 for day in range(1, num_days + 1)}
+    
+    cursor.execute("""
+        SELECT CAST(STRFTIME('%d', date) AS INTEGER) as day, total_points
+        FROM daily_reports
+        WHERE clinic_id = ? AND STRFTIME('%Y', date) = ? AND STRFTIME('%m', date) = ?
+    """, (clinic_id, str(year), f"{month:02d}"))
+    
+    for row in cursor.fetchall():
+        daily_points[row[0]] = row[1] if row[1] else 0
+
+    # 日次保険点数を累積データに変換
+    cumulative_points = []
+    current_total = 0
+    for day in range(1, num_days + 1):
+        current_total += daily_points[day]
+        cumulative_points.append(current_total)
+
+    # 前年同月の総「保険点数」を取得
+    cursor.execute("""
+        SELECT SUM(total_points)
+        FROM daily_reports
+        WHERE clinic_id = ? AND STRFTIME('%Y', date) = ? AND STRFTIME('%m', date) = ?
+    """, (clinic_id, str(year - 1), f"{month:02d}"))
+    last_year_total_points = cursor.fetchone()[0] or 0
+    
+    conn.close()
+
+    return {
+        'days': list(range(1, num_days + 1)),
+        'cumulative_points': cumulative_points,
+        'last_year_total_points': last_year_total_points
+    }
+# ▲▲▲【ここまで修正】▲▲▲
+
+def get_summary_data(target_year, target_month, clinic_id):
+    """サマリーデータをまとめて取得する内部関数"""
+    if not clinic_id:
+        # データがない場合に返すデフォルトの構造
+        default_counts = {name: 0 for name in ['胃カメラ', '大腸カメラ（ポリペクなし）', '大腸カメラ（ポリペクあり）', 'インフルエンザワクチン', '健診（自治体）']}
+        return {
+            'total_patients': 0, 'returning_patients': 0, 'business_days': 0,
+            'avg_daily_patients': 0, 'new_patients': 0, 'new_patient_rate': 0,
+            'total_points': 0, 'avg_price': 0, **default_counts
+        }
+
+    # 基本データを取得
+    base_data = get_monthly_data(target_year, target_month, clinic_id)
+    # 処置件数を取得
+    proc_counts = get_monthly_procedure_counts(target_year, target_month, clinic_id)
+    # 営業日数を計算
+    business_days = calculate_business_days(target_year, target_month)
+    
+    # 各指標を計算
+    total_patients = base_data.get('total_patients', 0)
+    total_points = base_data.get('total_points', 0)
+    new_patients = base_data.get('new_patients', 0)
+    
+    avg_daily_patients = (total_patients / business_days) if business_days > 0 else 0
+    new_patient_rate = (new_patients / total_patients * 100) if total_patients > 0 else 0
+    avg_price = (total_points / total_patients * 10) if total_patients > 0 else 0
+    
+    summary = {
+        'total_patients': total_patients,
+        'returning_patients': base_data.get('returning_patients', 0),
+        'business_days': business_days,
+        'avg_daily_patients': avg_daily_patients,
+        'new_patients': new_patients,
+        'new_patient_rate': new_patient_rate,
+        'total_points': total_points,
+        'avg_price': avg_price,
+        **proc_counts # 処置件数の辞書を展開して結合
+    }
+    return summary
+    
+@app.route('/monthly_report', methods=['GET', 'POST'])
+@login_required
+def monthly_report():
+    # 1. セッションとユーザー情報を取得
+    clinic_id = session.get('clinic_id')
+    user_id = session.get('user_id')
+    username = "ゲスト"
+    clinic_name = "未所属クリニック"
+    
+    conn = sqlite3.connect('daily_report.db')
+    cursor = conn.cursor()
+    if user_id:
+        cursor.execute("SELECT username, clinic_id FROM users WHERE id=?", (user_id,))
+        user_data = cursor.fetchone()
+        if user_data:
+            username = user_data[0]
+            current_clinic_id = user_data[1]
+            if current_clinic_id:
+                cursor.execute("SELECT name FROM clinics WHERE id=?", (current_clinic_id,))
+                clinic_data = cursor.fetchone()
+                if clinic_data:
+                    clinic_name = clinic_data[0]
+    conn.close()
+
+    # 2. フォームから年と月を取得
+    today = date.today()
+    year = request.form.get('year', default=today.year, type=int)
+    month = request.form.get('month', default=today.month, type=int)
+    
+    # 3. 必要なデータを各ヘルパー関数から取得
+    current_summary = get_summary_data(year, month, clinic_id)
+    last_year_summary = get_summary_data(year - 1, month, clinic_id)
+    trend_data = get_daily_trend_data(year, month, clinic_id)
+    
+    # ▼▼▼【ここから修正】▼▼▼
+    # 累積「保険点数」グラフ用のデータを取得
+    cumulative_chart_data = get_cumulative_daily_points_data(year, month, clinic_id)
+    # ▲▲▲【ここまで修正】▲▲▲
+
+    # 4. テンプレートに渡すその他の変数を準備
+    year_options = range(today.year, today.year - 10, -1)
+    
+    # 5. テンプレートを一度だけレンダリング
+    return render_template(
+        'monthly_report.html',
+        year=year,
+        month=month,
+        year_options=year_options,
+        current_data=current_summary,
+        last_year_data=last_year_summary,
+        trend_data=trend_data,
+        cumulative_chart_data=cumulative_chart_data,
+        username=username,
+        clinic_name=clinic_name
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)
